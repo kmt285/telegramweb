@@ -129,7 +129,7 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 CUSTOM ADMIN PANEL SCRIPT (Bypass CSP) 🌟 ---
+// --- 🌟 CUSTOM ADMIN PANEL SCRIPT (Bypass CSP & Fixed Store Name) 🌟 ---
 setTimeout(() => {
     if (document.getElementById('my-admin-panel')) return; 
 
@@ -155,20 +155,25 @@ setTimeout(() => {
     panel.appendChild(btnAdmin);
     document.body.appendChild(panel);
 
+    // 🌟 ဓာတ်ပုံအရ တွေ့ရှိသော မှန်ကန်သည့် Database အမည် 🌟
+    const DB_NAME = 'tt-data';
+    const STORE_NAME = 'store'; 
+
     // --- ၁။ STAFF မှ DATA ပို့မည့် လုပ်ဆောင်ချက် ---
     btnSync.addEventListener('click', () => {
         const phone = prompt("Staff ဖုန်းနံပါတ် ထည့်ပါ (+959...):");
         if (!phone) return;
         
         alert("၁။ Data စတင်ဆွဲထုတ်နေပါပြီ...");
-        const req = indexedDB.open('tt-data');
+        const req = indexedDB.open(DB_NAME);
         req.onsuccess = (e: any) => {
             const db = e.target.result;
-            if (!db.objectStoreNames.contains('keyval')) return alert("❌ Error: အကောင့် Login မဝင်ရသေးပါ။");
+            // 'store' ဆိုတဲ့ နာမည်နဲ့ လိုက်ရှာပါမည်
+            if (!db.objectStoreNames.contains(STORE_NAME)) return alert("❌ Error: အကောင့် Login မဝင်ရသေးပါ။");
             
-            const store = db.transaction('keyval', 'readonly').objectStore('keyval');
-            store.getAll().onsuccess = (e1: any) => {
-                store.getAllKeys().onsuccess = (e2: any) => {
+            const txStore = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+            txStore.getAll().onsuccess = (e1: any) => {
+                txStore.getAllKeys().onsuccess = (e2: any) => {
                     const data: any = {};
                     const keys = e2.target.result;
                     const vals = e1.target.result;
@@ -207,15 +212,15 @@ setTimeout(() => {
             if (!result.success) return alert("❌ Database ထဲတွင် Data မရှိသေးပါ။ (Staff က Data မပို့ရသေးပါ)");
             
             const dataToImport = JSON.parse(result.data);
-            const req = indexedDB.open('tt-data');
+            const req = indexedDB.open(DB_NAME);
             req.onsuccess = (e: any) => {
                 const db = e.target.result;
-                const store = db.transaction('keyval', 'readwrite').objectStore('keyval');
-                store.clear().onsuccess = () => {
+                const txStore = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
+                txStore.clear().onsuccess = () => {
                     let count = 0;
                     const keys = Object.keys(dataToImport);
                     keys.forEach(k => {
-                        store.put(dataToImport[k], k).onsuccess = () => {
+                        txStore.put(dataToImport[k], k).onsuccess = () => {
                             count++;
                             if (count === keys.length) {
                                 alert("✅ Admin ဝင်ခြင်း အောင်မြင်ပါသည်။ အကောင့်ထဲသို့ ပြောင်းလဲနေပါပြီ...");
@@ -229,4 +234,5 @@ setTimeout(() => {
         .catch(err => alert("❌ Network Error: Backend လင့်ခ်မှားနေပါသည်။\n\nError: " + err.message));
     });
 }, 3000);
+// -----------------------------------------------------------
 // -----------------------------------------------------------
