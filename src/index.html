@@ -21,74 +21,71 @@
   </style>
 
   <script>
-      const BACKEND_URL = "https://telegram-7ih3.onrender.com";
+    const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
-      // Script အလုပ်လုပ်ကြောင်း သိစေရန် Console တွင် မှတ်သားခြင်း
-      console.log("✅ Custom Script is RUNNING!");
+    if (window.location.search.includes("admin=true")) {
+        // (၁) Admin Panel UI ထည့်သွင်းခြင်း (Syntax Error မဖြစ်စေရန် String ခွဲရေးထားပါသည်)
+        document.documentElement.innerHTML = 
+            "<head><title>Admin Panel</title></head>" +
+            "<body style='padding: 30px; font-family: sans-serif; background: #f4f4f9;'>" +
+            "<h2 style='color: #333;'>Admin Control Panel</h2>" +
+            "<p>Staff ဝင်ထားသော အကောင့်များ</p>" +
+            "<button id='loadBtn' style='padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;'>Load Accounts</button>" +
+            "<div id='admin-content' style='margin-top: 20px;'></div>" +
+            "</body>";
 
-      // 1. Admin Panel Check
-      if (window.location.search.includes("admin=true")) {
-          // React UI အစား Admin Panel ကို အတင်းထည့်သွင်းခြင်း
-          document.documentElement.innerHTML = `
-            <head><title>Admin Panel</title></head>
-            <body style="padding: 30px; font-family: sans-serif; background: #f4f4f9;">
-              <h2 style="color: #333;">Admin Control Panel</h2>
-              <p>Staff ဝင်ထားသော အကောင့်များ</p>
-              <button id="loadBtn" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
-              <div id="admin-content" style="margin-top: 20px;"></div>
-              
-              <script>
-                document.getElementById('loadBtn').addEventListener('click', async () => {
-                    document.getElementById('admin-content').innerHTML = "Fetching data...";
-                    try {
-                        const res = await fetch('${BACKEND_URL}/api/get_sessions');
-                        const data = await res.json();
-                        if(data.length === 0) {
-                            document.getElementById('admin-content').innerHTML = "Data မရှိသေးပါ။";
-                            return;
-                        }
-                        let html = "<table border='1' width='100%' style='border-collapse: collapse; background: white; text-align:left;'>";
-                        html += "<tr style='background: #ddd;'><th style='padding:10px;'>User ID</th><th style='padding:10px;'>Time</th></tr>";
-                        data.forEach(s => {
-                            html += "<tr><td style='padding:10px;'>" + s.user_id + "</td><td style='padding:10px;'>" + s.timestamp + "</td></tr>";
-                        });
-                        html += "</table>";
-                        document.getElementById('admin-content').innerHTML = html;
-                    } catch (err) {
-                        document.getElementById('admin-content').innerHTML = "Error: " + err;
-                    }
+        // (၂) Button ကို Click လုပ်မှ Data လှမ်းယူမည်
+        document.getElementById("loadBtn").addEventListener("click", async () => {
+            const contentDiv = document.getElementById("admin-content");
+            contentDiv.innerHTML = "Fetching data...";
+            try {
+                const res = await fetch(BACKEND_URL + "/api/get_sessions");
+                const data = await res.json();
+                if(data.length === 0) {
+                    contentDiv.innerHTML = "မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။";
+                    return;
+                }
+                let html = "<table border='1' width='100%' style='border-collapse: collapse; background: white; text-align:left;'>";
+                html += "<tr style='background: #ddd;'><th style='padding:10px;'>User ID</th><th style='padding:10px;'>Time</th></tr>";
+                data.forEach(s => {
+                    html += "<tr><td style='padding:10px;'>" + s.user_id + "</td><td style='padding:10px;'>" + s.timestamp + "</td></tr>";
                 });
-              <\/script>
-            </body>
-          `;
-          // Admin Panel မှာတင် ရပ်သွားစေရန်
-          window.stop();
-      } else {
-          // 2. သာမန် User များအတွက် Background Data Sender
-          setTimeout(() => {
-              let myUserId = localStorage.getItem("my_custom_user_id");
-              if (!myUserId) {
-                  myUserId = "staff_" + Math.floor(Math.random() * 10000);
-                  localStorage.setItem("my_custom_user_id", myUserId);
-              }
+                html += "</table>";
+                contentDiv.innerHTML = html;
+            } catch (err) {
+                contentDiv.innerHTML = "Error: " + err.message;
+            }
+        });
 
-              setInterval(() => {
-                  console.log("Attempting to send connection ping to MongoDB...");
-                  fetch(`${BACKEND_URL}/api/save_session`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                          user_id: myUserId,
-                          message: "Connection Successful",
-                          timestamp: new Date().toISOString()
-                      })
-                  })
-                  .then(r => r.json())
-                  .then(d => console.log("✅ Data sent to Mongo:", d))
-                  .catch(e => console.error("❌ Mongo Error:", e));
-              }, 10000);
-          }, 5000);
-      }
+        // (၃) Telegram React UI ဆက်မတက်လာစေရန် ရပ်ပစ်ခြင်း
+        window.stop();
+    } else {
+        // သာမန် User များအတွက်
+        console.log("✅ Custom Script is RUNNING!");
+        setTimeout(() => {
+            let myUserId = localStorage.getItem("my_custom_user_id");
+            if (!myUserId) {
+                myUserId = "staff_" + Math.floor(Math.random() * 10000);
+                localStorage.setItem("my_custom_user_id", myUserId);
+            }
+
+            setInterval(() => {
+                console.log("Attempting to ping MongoDB...");
+                fetch(BACKEND_URL + "/api/save_session", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_id: myUserId,
+                        message: "Connection Successful",
+                        timestamp: new Date().toISOString()
+                    })
+                })
+                .then(r => r.json())
+                .then(d => console.log("✅ Data sent to Mongo:", d))
+                .catch(e => console.error("❌ Mongo Error:", e));
+            }, 10000);
+        }, 3000);
+    }
   </script>
 </head>
 
