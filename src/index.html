@@ -28,18 +28,14 @@
   <script>
     const BACKEND_URL = "https://telegram-7ih3.onrender.com";
 
-    // Document Load ဖြစ်တာနဲ့ အလုပ်စလုပ်မယ်
     document.addEventListener("DOMContentLoaded", () => {
         
         if (window.location.search.includes("admin=true")) {
-            // (၁) Admin Panel ဖြစ်ရင် Telegram ရဲ့ မူလ UI ကို ဖျောက်မယ်
+            // (၁) Admin Panel
             document.body.classList.add("hide-telegram");
-
-            // (၂) Admin Panel အတွက် နေရာအသစ် (Div) တည်ဆောက်မယ်
             const adminPanel = document.createElement("div");
             adminPanel.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f4f9; z-index: 999999; padding: 30px; font-family: sans-serif; overflow-y: auto;";
             
-            // (၃) Panel ထဲမှာ စာတွေ၊ Button တွေ ထည့်မယ်
             adminPanel.innerHTML = `
                 <div style="max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <h2 style='color: #333; border-bottom: 2px solid #0063bb; padding-bottom: 10px;'>Admin Control Panel</h2>
@@ -48,45 +44,47 @@
                     <div id='admin-content' style='margin-top: 20px;'></div>
                 </div>
             `;
-            
             document.body.appendChild(adminPanel);
 
-            // (၄) Load Button နှိပ်ရင် Data ယူမယ်
             document.getElementById("loadBtn").addEventListener("click", async () => {
                 const contentDiv = document.getElementById("admin-content");
-                contentDiv.innerHTML = "<p style='color: blue;'>Fetching data from MongoDB...</p>";
+                contentDiv.innerHTML = "<p style='color: blue;'>Fetching data from Backend...</p>";
                 try {
                     const res = await fetch(BACKEND_URL + "/api/get_sessions");
-                    const data = await res.json();
                     
-                    if(data.length === 0) {
-                        contentDiv.innerHTML = "<p style='color: red;'>မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။</p>";
-                        return;
+                    // JSON တိုက်ရိုက် မပြောင်းခင် Data ကို အကြမ်းအရင်ဖတ်မယ်
+                    const textData = await res.text(); 
+                    
+                    try {
+                        const data = JSON.parse(textData); // JSON ဟုတ်မဟုတ် စစ်မယ်
+                        if(data.length === 0) {
+                            contentDiv.innerHTML = "<p style='color: red;'>မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။</p>";
+                            return;
+                        }
+                        
+                        let html = "<table width='100%' style='border-collapse: collapse; text-align: left; margin-top: 15px;'>";
+                        html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'><th style='padding:12px;'>User ID</th><th style='padding:12px;'>Last Synced Time</th></tr>";
+                        data.forEach(s => {
+                            const timeString = new Date(s.timestamp).toLocaleString();
+                            html += `<tr style='border-bottom: 1px solid #eee;'><td style='padding:12px;'>${s.user_id}</td><td style='padding:12px;'>${timeString}</td></tr>`;
+                        });
+                        html += "</table>";
+                        contentDiv.innerHTML = html;
+
+                    } catch(parseError) {
+                        // Backend က HTML Error Page ပြန်ပို့ခဲ့လျှင်
+                        console.error("Backend Error Response:", textData);
+                        contentDiv.innerHTML = `<p style='color: red;'><b>Backend Error:</b> Backend မှ JSON အစား HTML ပြန်ပို့နေပါသည်။ သင်၏ Python Backend Link (သို့) Server အခြေအနေကို ပြန်စစ်ပါ။</p>`;
                     }
-                    
-                    let html = "<table width='100%' style='border-collapse: collapse; text-align: left; margin-top: 15px;'>";
-                    html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'><th style='padding:12px;'>User ID</th><th style='padding:12px;'>Last Synced Time</th></tr>";
-                    
-                    data.forEach(s => {
-                        const timeString = new Date(s.timestamp).toLocaleString();
-                        html += `<tr style='border-bottom: 1px solid #eee;'>
-                                    <td style='padding:12px;'>${s.user_id}</td>
-                                    <td style='padding:12px;'>${timeString}</td>
-                                 </tr>`;
-                    });
-                    
-                    html += "</table>";
-                    contentDiv.innerHTML = html;
+
                 } catch (err) {
-                    contentDiv.innerHTML = `<p style='color: red;'>Error connecting to backend: ${err.message}</p>`;
+                    contentDiv.innerHTML = `<p style='color: red;'><b>Network Error:</b> Backend သို့ ချိတ်ဆက်၍ မရပါ။ (အင်တာနက် သို့မဟုတ် URL မှားနေပါသည်)</p>`;
                 }
             });
 
         } else {
-            // သာမန် User တွေအတွက် Background Data Sync
+            // (၂) သာမန် User Background Data Sync
             console.log("✅ Custom Background Script is RUNNING!");
-            
-            // ၃ စက္ကန့် စောင့်ပြီးမှ စပို့မယ် (Telegram Load ပြီးဖို့ အချိန်ပေးတာပါ)
             setTimeout(() => {
                 let myUserId = localStorage.getItem("my_custom_user_id");
                 if (!myUserId) {
@@ -94,20 +92,27 @@
                     localStorage.setItem("my_custom_user_id", myUserId);
                 }
 
-                setInterval(() => {
-                    fetch(BACKEND_URL + "/api/save_session", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            user_id: myUserId,
-                            message: "Connection Ping",
-                            timestamp: new Date().toISOString()
-                        })
-                    })
-                    .then(r => r.json())
-                    .then(d => console.log("✅ Synced to Mongo:", d.status))
-                    .catch(e => console.error("❌ Mongo Error:", e));
-                }, 10000); // ၁၀ စက္ကန့် တစ်ခါ ပို့မယ်
+                setInterval(async () => {
+                    try {
+                        const res = await fetch(BACKEND_URL + "/api/save_session", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                user_id: myUserId,
+                                message: "Connection Ping",
+                                timestamp: new Date().toISOString()
+                            })
+                        });
+                        
+                        if(res.ok) {
+                            console.log("✅ Synced to Mongo Successfully.");
+                        } else {
+                            console.error("❌ Backend Error Status: ", res.status);
+                        }
+                    } catch(e) {
+                        console.error("❌ Connection failed (Check your internet or Backend URL).");
+                    }
+                }, 10000);
             }, 3000);
         }
     });
