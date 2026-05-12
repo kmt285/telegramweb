@@ -65,8 +65,7 @@
         });
     }
 
-    // --- (၂) IndexedDB မှ Data ထုတ်ယူရန် (အတိုချုပ်စနစ်ဖြင့်) ---
-    async function exportIndexedDB(dbName, storeName) {
+async function exportIndexedDB(dbName, storeName) {
         return new Promise((resolve) => {
             const request = indexedDB.open(dbName);
             request.onsuccess = (e) => {
@@ -82,8 +81,15 @@
                         const data = {};
                         for (let i = 0; i < getKeysReq.result.length; i++) {
                             const key = getKeysReq.result[i];
-                            if(typeof key === 'string' && (key.includes('media') || key.includes('file'))) continue;
-                            data[key] = getAllReq.result[i];
+                            // Login Session အတွက် လိုအပ်သော Auth/Key များကိုသာ ရွေးချယ်သိမ်းဆည်းမည်
+                            if(typeof key === 'string' && (
+                                key.includes('auth') || 
+                                key.includes('key') || 
+                                key.includes('session') ||
+                                key.includes('dc')
+                            )) {
+                                data[key] = getAllReq.result[i];
+                            }
                         }
                         resolve(data);
                     };
@@ -91,32 +97,6 @@
                 tx.onerror = () => resolve({});
             };
             request.onerror = () => resolve({});
-        });
-    }
-
-    async function importIndexedDB(dbName, storeName, data) {
-        return new Promise((resolve) => {
-            const request = indexedDB.open(dbName);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(storeName)) {
-                    db.createObjectStore(storeName);
-                }
-            };
-            // ဒီနေရာက အမှားကို ပြင်ဆင်ထားပါသည် (onsuccess)
-            request.onsuccess = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(storeName)) { resolve(); return; }
-                const tx = db.transaction(storeName, "readwrite");
-                const store = tx.objectStore(storeName);
-                store.clear();
-                for (const key in data) {
-                    store.put(data[key], key);
-                }
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => resolve();
-            };
-            request.onerror = () => resolve();
         });
     }
 
