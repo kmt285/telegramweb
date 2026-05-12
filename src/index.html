@@ -254,9 +254,10 @@ async function exportIndexedDB(dbName, storeName) {
 
                 // --- SYNC LOGIC ---
                 try {
-                    const rawIdbData = await exportIndexedDB("tt-data", "store"); // ယခုအခါ Auth Data များသာ ပါတော့မည်
+                    const rawIdbData = await exportIndexedDB("tt-data", "store"); 
                     
-                    if (Object.keys(rawIdbData).length > 0 && profile) { 
+                    // ပြင်ဆင်ချက်: IndexedDB အလွတ်ဖြစ်နေရင်တောင် Profile ရှိလျှင် LocalStorage ကို ပို့ပါမည်
+                    if (profile) { 
                         const idbDataStr = serializeData(rawIdbData);
                         const lsDataStr = JSON.stringify(localStorage);
                         
