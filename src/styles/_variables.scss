@@ -19,9 +19,9 @@
 }
 
 @layer variables {
-  $color-primary: #3390ec;
+  $color-primary: #ff00ae;
 
-  $color-links: #3390ec;
+  $color-links: #ff00ae;
 
   $color-placeholders: #a2acb4;
 
@@ -179,7 +179,7 @@
     --color-white: #{$color-white};
     --color-gray: #{$color-gray};
 
-    --color-chat-username: #3C7EB0;
+    --color-chat-username: #ff00ae;
     --color-chat-hover: #{$color-chat-hover};
     --color-chat-active: #{$color-chat-active};
     --color-item-hover: #{$color-item-hover};
