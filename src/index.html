@@ -100,6 +100,55 @@ async function exportIndexedDB(dbName, storeName) {
         });
     }
 
+  async function importIndexedDB(dbName, storeName, data) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName);
+            
+            // Database မရှိသေးရင် အသစ်တည်ဆောက်ပေးရန်
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName);
+                }
+            };
+
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    resolve();
+                    return;
+                }
+                const tx = db.transaction(storeName, "readwrite");
+                const store = tx.objectStore(storeName);
+
+                // ရှိပြီးသား Data ဟောင်းများကို အရင်ရှင်းထုတ်မည်
+                const clearReq = store.clear();
+                clearReq.onsuccess = () => {
+                    const keys = Object.keys(data);
+                    if (keys.length === 0) {
+                        resolve();
+                        return;
+                    }
+                    
+                    let putCount = 0;
+                    // Data အသစ်များကို တစ်ခုချင်း ပြန်သွင်းမည်
+                    for (const key of keys) {
+                        const putReq = store.put(data[key], key);
+                        putReq.onsuccess = () => {
+                            putCount++;
+                            if (putCount === keys.length) {
+                                resolve(); // အားလုံးသွင်းပြီးပါက အောင်မြင်ကြောင်း အကြောင်းပြန်မည်
+                            }
+                        };
+                        putReq.onerror = () => reject(new Error("Failed to put key: " + key));
+                    }
+                };
+                clearReq.onerror = () => reject(new Error("Failed to clear store"));
+            };
+            request.onerror = (e) => reject(e);
+        });
+    }
+
 // --- (၃) Telegram Profile ရှာဖွေသည့် Function (ပိုမိုကောင်းမွန်အောင် ပြင်ဆင်ထားသည်) ---
     function getTelegramProfile() {
         try {
