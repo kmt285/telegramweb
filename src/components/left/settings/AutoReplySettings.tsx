@@ -21,8 +21,15 @@ type StateProps = {
 const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }) => {
   const lang = useLang();
   
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [replyText, setReplyText] = useState("ယခု မအားသေးပါ။ နောက်မှ ပြန်ဆက်သွယ်ပါမည်။");
+  const [isEnabled, setIsEnabled] = useState(() => {
+    const targetId = localStorage.getItem("my_custom_user_id") || currentUserId || "unknown";
+    return localStorage.getItem(`ar_enabled_${targetId}`) === 'true';
+  });
+  
+  const [replyText, setReplyText] = useState(() => {
+    const targetId = localStorage.getItem("my_custom_user_id") || currentUserId || "unknown";
+    return localStorage.getItem(`ar_text_${targetId}`) || "ယခု မအားသေးပါ။ နောက်မှ ပြန်ဆက်သွယ်ပါမည်။";
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   // 🌟 Database ထဲက "staff_..." နာမည်နှင့် အတိအကျ ကိုက်ညီအောင် ယူမည့် Function 🌟
@@ -63,12 +70,16 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
       const data = await response.json();
 
       if (response.ok) {
-        alert("✅ Auto-Reply Settings အောင်မြင်စွာ မှတ်သားပြီးပါပြီ!");
+        // UI မှတ်ဉာဏ်ထဲ သိမ်းမည့် အပိုင်း
+        localStorage.setItem(`ar_enabled_${targetUserId}`, isEnabled.toString());
+        localStorage.setItem(`ar_text_${targetUserId}`, replyText);
+        
+        alert("Auto-Reply Enabled!");
       } else {
         alert("❌ Server Error: " + (data.error || "Unknown error occurred"));
       }
     } catch (err: any) {
-      alert("❌ Network Error: Backend သို့ ချိတ်ဆက်၍ မရပါ။");
+      alert("❌ Network Error");
     } finally {
       setIsSaving(false);
     }
@@ -80,7 +91,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
         <Button round color="translucent" size="smaller" ariaLabel={lang('Back')} onClick={onReset}>
           <i className="icon-arrow-left" />
         </Button>
-        <h3 className="settings-header-title">🤖 Auto-Reply Settings</h3>
+        <h3 className="settings-header-title">Auto-Reply Settings</h3>
       </div>
 
       <div className="settings-item" style={{ padding: '1rem' }}>
