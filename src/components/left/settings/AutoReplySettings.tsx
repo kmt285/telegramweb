@@ -29,7 +29,10 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
-    if (!currentUserId) return;
+    if (!currentUserId) {
+      alert("User ID not found!");
+      return;
+    }
     setIsSaving(true);
     
     try {
@@ -46,17 +49,21 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
         })
       });
 
+      // 🌟 Backend က ပြန်ပို့တဲ့ Error စာသားအမှန်ကို ဖတ်မည့်အပိုင်း 🌟
+      const data = await response.json();
+
       if (response.ok) {
-        showNotification({ message: "Auto-Reply settings saved successfully!" });
+        alert("Auto-Reply settings saved successfully!");
       } else {
-        throw new Error("Failed to save");
+        // Error အတိအကျကို Alert ပြပေးမည်
+        alert("Server Error: " + (data.error || "Unknown error occurred"));
       }
-    } catch (err) {
-      showNotification({ message: "Error saving Auto-Reply settings." });
+    } catch (err: any) {
+      alert("Network Error: Backend သို့ ချိတ်ဆက်၍ မရပါ။\n" + err.message);
     } finally {
       setIsSaving(false);
     }
-  }, [currentUserId, isEnabled, replyText, showNotification]);
+  }, [currentUserId, isEnabled, replyText]);
 
   return (
     <div className="settings-content custom-scroll">
