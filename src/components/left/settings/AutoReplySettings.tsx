@@ -25,13 +25,27 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
   const [replyText, setReplyText] = useState("ယခု မအားသေးပါ။ နောက်မှ ပြန်ဆက်သွယ်ပါမည်။");
   const [isSaving, setIsSaving] = useState(false);
 
+  // 🌟 Database ထဲက "staff_..." နာမည်နှင့် အတိအကျ ကိုက်ညီအောင် ယူမည့် Function 🌟
+  const getBackendUserId = () => {
+    try {
+        const stateStr = localStorage.getItem('tt-global-state');
+        if (stateStr) {
+            const state = JSON.parse(stateStr);
+            const currentId = state.currentUserId;
+            if (currentId && state.users && state.users.byId) {
+                const user = state.users.byId[currentId] || state.users.byId[currentId.toString()];
+                if (user) return currentId.toString();
+            }
+        }
+    } catch (e) {}
+    // Telegram ID အစစ် မရခဲ့ရင် DB ထဲက "staff_xxx" ကိုပဲ အတိအကျ ပြန်ပို့ပေးမည်
+    return localStorage.getItem("my_custom_user_id") || currentUserId || "unknown";
+  };
+
   const handleSave = useCallback(async () => {
-    if (!currentUserId) {
-      alert("User ID not found!");
-      return;
-    }
-    setIsSaving(true);
+    const targetUserId = getBackendUserId(); // ID အမှန်ကို ဆွဲယူပါပြီ
     
+    setIsSaving(true);
     try {
       const response = await fetch(`${BACKEND_URL}/api/update_auto_reply`, {
         method: 'POST',
@@ -40,7 +54,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
           'x-api-key': API_KEY
         },
         body: JSON.stringify({
-          user_id: currentUserId,
+          user_id: targetUserId, // 🌟 DB ထဲက ID နှင့် တစ်ပုံစံတည်း တူသွားပါမည်
           enabled: isEnabled,
           text: replyText
         })
@@ -58,7 +72,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
     } finally {
       setIsSaving(false);
     }
-  }, [currentUserId, isEnabled, replyText]);
+  }, [isEnabled, replyText, currentUserId]);
 
   return (
     <div className="settings-content custom-scroll">
