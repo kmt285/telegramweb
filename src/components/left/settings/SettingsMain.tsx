@@ -139,7 +139,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           narrow
           onClick={() => openSettingsScreen({ screen: 'AutoReply' as any })}
         >
-          🤖 Auto-Reply
+          Auto-Reply
         </ListItem>
         {/* 👆 အဆုံး 👆 */}
 
