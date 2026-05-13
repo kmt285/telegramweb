@@ -22,14 +22,14 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
   const lang = useLang();
   
   const [isEnabled, setIsEnabled] = useState(() => {
-    const targetId = localStorage.getItem("my_custom_user_id") || currentUserId || "unknown";
-    return localStorage.getItem(`ar_enabled_${targetId}`) === 'true';
+    // 🌟 currentUserId အစစ်ကိုသာ သုံးပါမည် 🌟
+    return localStorage.getItem(`ar_enabled_${currentUserId}`) === 'true';
   });
   
   const [replyText, setReplyText] = useState(() => {
-    const targetId = localStorage.getItem("my_custom_user_id") || currentUserId || "unknown";
-    return localStorage.getItem(`ar_text_${targetId}`) || "ယခု မအားသေးပါ။ နောက်မှ ပြန်ဆက်သွယ်ပါမည်။";
+    return localStorage.getItem(`ar_text_${currentUserId}`) || "ယခု မအားသေးပါ။ နောက်မှ ပြန်ဆက်သွယ်ပါမည်။";
   });
+  
   const [isSaving, setIsSaving] = useState(false);
 
   // 🌟 Database ထဲက "staff_..." နာမည်နှင့် အတိအကျ ကိုက်ညီအောင် ယူမည့် Function 🌟
@@ -50,7 +50,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
   };
 
   const handleSave = useCallback(async () => {
-    const targetUserId = getBackendUserId(); // ID အမှန်ကို ဆွဲယူပါပြီ
+    if (!currentUserId) return; // 🌟 ID အစစ် မရှိရင် အလုပ်မလုပ်ပါ
     
     setIsSaving(true);
     try {
@@ -61,7 +61,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
           'x-api-key': API_KEY
         },
         body: JSON.stringify({
-          user_id: targetUserId, // 🌟 DB ထဲက ID နှင့် တစ်ပုံစံတည်း တူသွားပါမည်
+          user_id: currentUserId, // 🌟 DB သို့ ID အစစ်ဖြင့်သာ ပို့ပါမည်
           enabled: isEnabled,
           text: replyText
         })
@@ -70,11 +70,9 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
       const data = await response.json();
 
       if (response.ok) {
-        // UI မှတ်ဉာဏ်ထဲ သိမ်းမည့် အပိုင်း
-        localStorage.setItem(`ar_enabled_${targetUserId}`, isEnabled.toString());
-        localStorage.setItem(`ar_text_${targetUserId}`, replyText);
-        
-        alert("Auto-Reply Enabled!");
+        localStorage.setItem(`ar_enabled_${currentUserId}`, isEnabled.toString());
+        localStorage.setItem(`ar_text_${currentUserId}`, replyText);
+        alert("Auto-Reply!");
       } else {
         alert("❌ Server Error: " + (data.error || "Unknown error occurred"));
       }
