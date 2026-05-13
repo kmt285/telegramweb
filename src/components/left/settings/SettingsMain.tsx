@@ -1,7 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
 import { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
-import AutoReplySettings from './AutoReplySettings';
 
 import type { ApiStarsAmount, ApiTonAmount } from '../../../api/types';
 import { SettingsScreens } from '../../../types';
@@ -101,7 +100,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="settings"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.General })}
         >
           {lang('TelegramGeneralSettingsViewController')}
@@ -109,7 +107,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="animations"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.Performance })}
         >
           {lang('MenuAnimations')}
@@ -117,7 +114,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="unmute"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.Notifications })}
         >
           {lang('Notifications')}
@@ -125,7 +121,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="data"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.DataStorage })}
         >
           {lang('DataSettings')}
@@ -133,15 +128,24 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="lock"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.Privacy })}
         >
           {lang('PrivacySettings')}
         </ListItem>
+
+        {/* 👇 🤖 Auto-Reply Menu အသစ် ထည့်သွင်းထားသော နေရာ 👇 */}
+        <ListItem
+          icon="message" 
+          narrow
+          onClick={() => openSettingsScreen({ screen: 'AutoReply' as any })}
+        >
+          🤖 Auto-Reply
+        </ListItem>
+        {/* 👆 အဆုံး 👆 */}
+
         <ListItem
           icon="folder"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.Folders })}
         >
           {lang('Filters')}
@@ -149,7 +153,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="active-sessions"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.ActiveSessions })}
         >
           {lang('SessionsTitle')}
@@ -158,7 +161,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="language"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.Language })}
         >
           {lang('Language')}
@@ -167,7 +169,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="stickers"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.Stickers })}
         >
           {lang('MenuStickers')}
@@ -178,7 +179,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           <ListItem
             leftElement={<StarIcon className="icon ListItem-main-icon" type="premium" size="big" />}
             narrow
-
             onClick={() => openPremiumModal()}
           >
             {lang('TelegramPremium')}
@@ -187,7 +187,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           leftElement={<StarIcon className="icon ListItem-main-icon" type="gold" size="big" />}
           narrow
-
           onClick={() => openStarsBalanceModal({})}
         >
           {lang('MenuStars')}
@@ -213,7 +212,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           <ListItem
             icon="gift"
             narrow
-
             onClick={() => openGiftRecipientPicker()}
           >
             {lang('MenuSendGift')}
@@ -231,7 +229,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="help"
           narrow
-
           onClick={() => openUrl({ url: FAQ_URL })}
         >
           {lang('MenuTelegramFaq')}
@@ -239,7 +236,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="privacy-policy"
           narrow
-
           onClick={() => openUrl({ url: PRIVACY_URL })}
         >
           {lang('MenuPrivacyPolicy')}
