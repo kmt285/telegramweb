@@ -1,21 +1,22 @@
 @use "sass:color";
+@use "sass:math"; // math module ကို ထပ်ထည့်လိုက်ပါသည်
 
 @function toRGB($color) {
-  @return color.channel($color, "red") + ", " + color.channel($color, "green") + ", " + color.channel($color, "blue");
+  @return red($color) + ", " + green($color) + ", " + blue($color);
 }
 
 @function blend-normal($foreground, $background) {
-  $opacity: color.opacity($foreground);
-  $background-opacity: color.opacity($background);
+  $opacity: alpha($foreground); // color.opacity အစား alpha ကို သုံးပါမည်
+  $background-opacity: alpha($background);
 
-  // calculate opacity
-  /* stylelint-disable @stylistic/max-line-length */
-  $bm-red: color.channel($foreground, "red") * $opacity + color.channel($background, "red") * $background-opacity * (1 - $opacity);
-  $bm-green: color.channel($foreground, "green") * $opacity + color.channel($background, "green") * $background-opacity * (1 - $opacity);
-  $bm-blue: color.channel($foreground, "blue") * $opacity + color.channel($background, "blue") * $background-opacity * (1 - $opacity);
-  /* stylelint-enable @stylistic/max-line-length */
+  // calculate opacity
+  /* stylelint-disable @stylistic/max-line-length */
+  $bm-red: red($foreground) * $opacity + red($background) * $background-opacity * (1 - $opacity);
+  $bm-green: green($foreground) * $opacity + green($background) * $background-opacity * (1 - $opacity);
+  $bm-blue: blue($foreground) * $opacity + blue($background) * $background-opacity * (1 - $opacity);
+  /* stylelint-enable @stylistic/max-line-length */
 
-  @return rgb($bm-red, $bm-green, $bm-blue);
+  @return rgb($bm-red, $bm-green, $bm-blue);
 }
 
 @layer variables {
