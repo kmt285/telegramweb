@@ -1,6 +1,7 @@
 import type { FC } from '@teact';
 import { memo, useRef, useState } from '@teact';
 import { getActions, getGlobal } from '../../../global';
+import AutoReplySettings from './AutoReplySettings';
 
 import type { FolderEditDispatch, FoldersState } from '../../../hooks/reducers/useFoldersReducer';
 import type { AnimationLevel } from '../../../types';
@@ -247,6 +248,12 @@ const Settings: FC<OwnProps> = ({
         return (
           <SettingsMain isActive={isActive} onReset={handleReset} />
         );
+      case 'AutoReply' as any:
+      return (
+        <AutoReplySettings 
+          onReset={() => openSettingsScreen({ screen: SettingsScreens.Main })} 
+        />
+      );
       case SettingsScreens.EditProfile:
         return (
           <SettingsEditProfile
