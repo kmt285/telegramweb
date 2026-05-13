@@ -1,29 +1,33 @@
-import React, { useState, useEffect, useCallback } from '../../../lib/teact/teact';
-import { getActions, getGlobal } from '../../../global';
+import type { FC } from '../../../lib/teact/teact';
+import { memo, useState, useCallback } from '../../../lib/teact/teact';
+import { getActions, withGlobal } from '../../../global';
 import useLang from '../../../hooks/useLang';
 
 import ListItem from '../../ui/ListItem';
 import Checkbox from '../../ui/Checkbox';
 import Button from '../../ui/Button';
 
-import './Settings.scss'; // မူရင်း Setting Style ကိုပဲ ယူသုံးမည်
+import './Settings.scss';
 
 const BACKEND_URL = "https://kmt285476-telegram.hf.space"; 
 const API_KEY = "tg_custom_secret_key_2026";
 
-const AutoReplySettings = ({ onReset }: { onReset: () => void }) => {
+type OwnProps = {
+  onReset: () => void;
+};
+
+type StateProps = {
+  currentUserId?: string;
+};
+
+const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }) => {
   const lang = useLang();
   const { showNotification } = getActions();
   
-  // လက်ရှိ User ရဲ့ ID ကို Telegram Global State မှ ယူခြင်း
-  const global = getGlobal();
-  const currentUserId = global.currentUserId;
-
   const [isEnabled, setIsEnabled] = useState(false);
   const [replyText, setReplyText] = useState("ယခု မအားသေးပါ။ နောက်မှ ပြန်ဆက်သွယ်ပါမည်။");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Save လုပ်မည့် Function
   const handleSave = useCallback(async () => {
     if (!currentUserId) return;
     setIsSaving(true);
@@ -57,7 +61,6 @@ const AutoReplySettings = ({ onReset }: { onReset: () => void }) => {
   return (
     <div className="settings-content custom-scroll">
       <div className="settings-header">
-        {/* နောက်ပြန်ဆုတ်မည့် ခလုတ် */}
         <Button round color="translucent" size="smaller" ariaLabel={lang('Back')} onClick={onReset}>
           <i className="icon-arrow-left" />
         </Button>
@@ -80,10 +83,10 @@ const AutoReplySettings = ({ onReset }: { onReset: () => void }) => {
 
       <div className="settings-item">
         <h4 className="settings-item-header" dir="auto">Custom Message</h4>
-        <div style={{ padding: '0 1rem' }}>
+        <div className="settings-item-description" style={{ padding: '0 1rem', marginBottom: '1rem' }}>
           <textarea
             value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
+            onChange={(e: any) => setReplyText(e.target.value)}
             disabled={!isEnabled}
             rows={4}
             style={{
@@ -109,4 +112,10 @@ const AutoReplySettings = ({ onReset }: { onReset: () => void }) => {
   );
 };
 
-export default AutoReplySettings;
+export default memo(withGlobal<OwnProps>(
+  (global): StateProps => {
+    return {
+      currentUserId: global.currentUserId,
+    };
+  },
+)(AutoReplySettings));
