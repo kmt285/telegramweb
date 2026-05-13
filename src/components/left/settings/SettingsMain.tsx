@@ -1,6 +1,7 @@
 import type { FC } from '../../../lib/teact/teact';
 import { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
+import AutoReplySettings from './AutoReplySettings';
 
 import type { ApiStarsAmount, ApiTonAmount } from '../../../api/types';
 import { SettingsScreens } from '../../../types';
