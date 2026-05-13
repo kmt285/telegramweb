@@ -248,12 +248,12 @@ const Settings: FC<OwnProps> = ({
         return (
           <SettingsMain isActive={isActive} onReset={handleReset} />
         );
-      case 'AutoReply' as any:
-      return (
-        <AutoReplySettings 
-          onReset={() => openSettingsScreen({ screen: SettingsScreens.Main })} 
-        />
-      );
+      case SettingsScreens.AutoReply:
+        return (
+          <AutoReplySettings
+            onReset={() => openSettingsScreen({ screen: SettingsScreens.Main })}
+          />
+        );
       case SettingsScreens.EditProfile:
         return (
           <SettingsEditProfile
