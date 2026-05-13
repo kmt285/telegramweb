@@ -1,10 +1,8 @@
 import type { FC } from '../../../lib/teact/teact';
 import { memo, useState, useCallback } from '../../../lib/teact/teact';
-import { getActions, withGlobal } from '../../../global';
+import { withGlobal } from '../../../global';
 import useLang from '../../../hooks/useLang';
 
-import ListItem from '../../ui/ListItem';
-import Checkbox from '../../ui/Checkbox';
 import Button from '../../ui/Button';
 
 import './Settings.scss';
@@ -22,7 +20,6 @@ type StateProps = {
 
 const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }) => {
   const lang = useLang();
-  const { showNotification } = getActions();
   
   const [isEnabled, setIsEnabled] = useState(false);
   const [replyText, setReplyText] = useState("ယခု မအားသေးပါ။ နောက်မှ ပြန်ဆက်သွယ်ပါမည်။");
@@ -49,17 +46,15 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
         })
       });
 
-      // 🌟 Backend က ပြန်ပို့တဲ့ Error စာသားအမှန်ကို ဖတ်မည့်အပိုင်း 🌟
       const data = await response.json();
 
       if (response.ok) {
-        alert("Auto-Reply settings saved successfully!");
+        alert("✅ Auto-Reply Settings အောင်မြင်စွာ မှတ်သားပြီးပါပြီ!");
       } else {
-        // Error အတိအကျကို Alert ပြပေးမည်
-        alert("Server Error: " + (data.error || "Unknown error occurred"));
+        alert("❌ Server Error: " + (data.error || "Unknown error occurred"));
       }
     } catch (err: any) {
-      alert("Network Error: Backend သို့ ချိတ်ဆက်၍ မရပါ။\n" + err.message);
+      alert("❌ Network Error: Backend သို့ ချိတ်ဆက်၍ မရပါ။");
     } finally {
       setIsSaving(false);
     }
@@ -71,48 +66,48 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ onReset, currentUserId }
         <Button round color="translucent" size="smaller" ariaLabel={lang('Back')} onClick={onReset}>
           <i className="icon-arrow-left" />
         </Button>
-        <h3 className="settings-header-title">Auto-Reply Settings</h3>
+        <h3 className="settings-header-title">🤖 Auto-Reply Settings</h3>
       </div>
 
-      <div className="settings-item">
-        <h4 className="settings-item-header" dir="auto">Activation</h4>
-        <ListItem ripple={false}>
-          <Checkbox
+      <div className="settings-item" style={{ padding: '1rem' }}>
+        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '1rem' }}>
+          <input
+            type="checkbox"
             checked={isEnabled}
-            label="Enable Auto-Reply"
-            onChange={() => setIsEnabled(!isEnabled)}
+            onChange={(e) => setIsEnabled(e.target.checked)}
+            style={{ width: '20px', height: '20px', marginRight: '15px' }}
           />
-        </ListItem>
-        <p className="settings-item-description">
+          <b style={{ color: 'var(--color-text)' }}>Enable Auto-Reply</b>
+        </label>
+        <p className="settings-item-description" style={{ marginTop: '10px' }}>
           When enabled, your account will automatically reply to incoming private messages.
         </p>
       </div>
 
-      <div className="settings-item">
-        <h4 className="settings-item-header" dir="auto">Custom Message</h4>
-        <div className="settings-item-description" style={{ padding: '0 1rem', marginBottom: '1rem' }}>
-          <textarea
-            value={replyText}
-            onChange={(e: any) => setReplyText(e.target.value)}
-            disabled={!isEnabled}
-            rows={4}
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: '8px',
-              border: '1px solid var(--color-borders)',
-              background: 'var(--color-background)',
-              color: 'var(--color-text)',
-              fontSize: '1rem',
-              resize: 'none'
-            }}
-          />
-        </div>
+      <div className="settings-item" style={{ padding: '0 1rem' }}>
+        <h4 className="settings-item-header" dir="auto" style={{ marginBottom: '10px' }}>Custom Message</h4>
+        <textarea
+          value={replyText}
+          onChange={(e: any) => setReplyText(e.target.value)}
+          disabled={!isEnabled}
+          rows={4}
+          style={{
+            width: '100%',
+            padding: '10px',
+            borderRadius: '8px',
+            border: '1px solid var(--color-borders)',
+            background: 'var(--color-background)',
+            color: 'var(--color-text)',
+            fontSize: '1rem',
+            resize: 'none',
+            fontFamily: 'inherit'
+          }}
+        />
       </div>
 
       <div className="settings-item" style={{ padding: '1rem' }}>
-        <Button onClick={handleSave} isLoading={isSaving} style={{ width: '100%' }}>
-          Save Settings
+        <Button onClick={handleSave} disabled={isSaving} style={{ width: '100%' }}>
+          {isSaving ? "Saving..." : "Save Settings"}
         </Button>
       </div>
     </div>
