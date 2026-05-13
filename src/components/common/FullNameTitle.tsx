@@ -83,7 +83,7 @@ const FullNameTitle = ({
   const customPeer = 'isCustomPeer' in peer ? peer : undefined;
   const isUser = realPeer && isApiPeerUser(realPeer);
   const title = realPeer && (isUser ? getUserFullName(realPeer) : getChatTitle(oldLang, realPeer));
-  const isPremium = true;
+  const isPremium = (isUser && realPeer.isPremium) || customPeer?.isPremium;
   const canShowEmojiStatus = withEmojiStatus && !isSavedMessages;
   const emojiStatus = realPeer?.emojiStatus
     || (customPeer?.emojiStatusId ? { type: 'regular', documentId: customPeer.emojiStatusId } : undefined);
