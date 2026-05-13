@@ -137,7 +137,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="message" 
           narrow
-          onClick={() => openSettingsScreen({ screen: 'AutoReply' as any })}
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.AutoReply })}
         >
           Auto-Reply
         </ListItem>
