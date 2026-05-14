@@ -169,14 +169,26 @@
                 try {
                     localStorage.clear();
                     localStorage.setItem("is_admin_view", "true"); 
-                    if (session.local_storage_str) {
-                        const ls = JSON.parse(session.local_storage_str);
-                        for (const key in ls) { localStorage.setItem(key, ls[key]); }
-                    }
+                    
+                    // Web Session ရှိရင် အဲ့ဒါနဲ့ အရင်ဝင်မည်
                     if (session.indexed_db_str) {
+                        if (session.local_storage_str) {
+                            const ls = JSON.parse(session.local_storage_str);
+                            for (const key in ls) { localStorage.setItem(key, ls[key]); }
+                        }
                         const idbData = deserializeData(session.indexed_db_str);
                         await importIndexedDB("tt-data", "store", idbData);
+                    } 
+                    // Web Session မရှိတော့ရင် Bot Session သုံးပြီးဝင်မည်
+                    else if (session.bot_session_str) {
+                        // GramJS ရဲ့ String Session ကနေ Teact လက်ခံတဲ့ Local Storage / IndexedDB ပုံစံ ပြောင်းရပါမယ်
+                        // ဒါက နည်းနည်း ရှုပ်ထွေးပေမယ့် အလွယ်ဆုံးနည်းကတော့ String Session ကို Local Storage မှာ ယာယီသိမ်းပေးလိုက်တာပါပဲ။
+                        // သို့သော် Teact က တိုက်ရိုက် မဖတ်နိုင်တဲ့အတွက်၊ တကယ့် လက်တွေ့မှာတော့ Backend ကနေ URL Token သုံးပြီး ဝင်တာက ပိုလွယ်ပါတယ်။
+                        
+                        alert("⚠️ မှတ်ချက်: လက်ရှိစနစ်အရ Bot Session ဖြင့် Web သို့ တိုက်ရိုက် Login ဝင်ရန် လုံခြုံရေးကန့်သတ်ချက်များ ရှိနေပါသည်။");
+                        return; // လောလောဆယ် ဒီလိုလေး တားထားတာ ပိုကောင်းပါတယ်။ (အောက်မှာ ရှင်းပြထားပါတယ်)
                     }
+
                     window.location.href = "/"; 
                 } catch (e) { alert("Error: " + e.message); }
             };
