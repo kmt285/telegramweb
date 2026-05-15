@@ -551,34 +551,3 @@
   color: var(--color-primary);
   margin: 0 auto;
 }
-
-/* Media Upload Styles */
-.ar-media-upload {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  border: 2px dashed var(--color-borders, #dfe1e5);
-  border-radius: 0.75rem;
-  background-color: var(--color-background, #ffffff);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: center;
-
-  &:hover {
-    border-color: var(--color-primary, #3390ec);
-    background-color: rgba(51, 144, 236, 0.05);
-  }
-}
-
-.ar-media-preview {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background-color: var(--color-chat-hover, #f4f4f5);
-  border: 1px solid var(--color-borders, #dfe1e5);
-  border-radius: 0.75rem;
-  color: var(--color-text, #000);
-}
