@@ -152,7 +152,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                 </div>
                 <div>
-                  <div className="ar-title" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Connect Server</div>
+                  <div className="ar-title" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Away Messages</div>
                   <div className="ar-desc">Define messages that are automatically sent when you are off.</div>
                 </div>
               </>
