@@ -215,7 +215,12 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
             <div className="ar-text-col">
               <div className="ar-title">Away Messages</div>
               <div className="ar-desc">Reply automatically when you are away.</div>
-              {/* Media Upload Box */}
+            </div>
+            <div className={`ar-switch ${isEnabled ? 'on' : ''}`}>
+              <div className="ar-switch-thumb"></div>
+            </div>
+          </div>
+                                    {/* Media Upload Box */}
           <div className={`ar-textarea-group ${!isEnabled ? 'disabled' : ''}`} style={{ marginTop: '0.5rem' }}>
             <div className="ar-textarea-label">Attachment (Optional)</div>
             {!mediaName ? (
@@ -233,11 +238,6 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
                 <button onClick={() => { setMediaData(null); setMediaName(null); setRemoveMedia(true); }} style={{ background: 'rgba(223,63,64,0.1)', color: 'var(--color-error)', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }} disabled={!isEnabled}>Remove</button>
               </div>
             )}
-          </div>
-            </div>
-            <div className={`ar-switch ${isEnabled ? 'on' : ''}`}>
-              <div className="ar-switch-thumb"></div>
-            </div>
           </div>
 
           {/* Responsive Textarea */}
