@@ -128,6 +128,8 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
         setIsLinked(false);
         setStep('idle');
         setErrorMsg("Session expired. Please reconnect.");
+      } else {
+        setErrorMsg('');
       }
     } catch (err) { setErrorMsg("Failed to save."); }
     setIsLoading(false);
@@ -135,112 +137,144 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
   if (isFetching) return null;
 
-  // 🌟 [၁] Connect Server / OTP UI (ရှင်းလင်းသပ်ရပ်စွာ)
-  if (!isLinked) {
-    return (
-      <div className="settings-content custom-scroll">
-        <div className="settings-header">
-          <h3 className="settings-header-title">Away Messages</h3>
-        </div>
-        <div style={{ padding: '32px 24px', boxSizing: 'border-box' }}>
-            {errorMsg && <div style={{ color: '#df3f40', fontSize: '14px', marginBottom: '24px', textAlign: 'center' }}>{errorMsg}</div>}
-            
-            <div style={{ width: '100%', maxWidth: '320px', margin: '0 auto' }}>
-                <div style={{ fontSize: '20px', fontWeight: 500, marginBottom: '8px', color: 'var(--color-text, #000)', textAlign: 'center' }}>
-                    {step === 'idle' ? "Connect Server" : step === 'otp' ? "Enter Code" : "2FA Password"}
-                </div>
-                <div style={{ color: 'var(--color-text-secondary, #707579)', marginBottom: '32px', fontSize: '15px', textAlign: 'center', lineHeight: '1.5' }}>
-                    {step === 'idle' ? "Enable auto-reply for your private messages." : "Please verify your account to continue."}
-                </div>
-
-                {step === 'otp' && <div style={{ marginBottom: '24px' }}><InputText label="OTP Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} /></div>}
-                {step === '2fa' && <div style={{ marginBottom: '24px' }}><InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} /></div>}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <Button onClick={step === 'idle' ? handleAutoRequestCode : handleVerifyCode} isLoading={isLoading} fluid>
-                        {step === 'idle' ? "REQUEST CODE" : "CONTINUE"}
-                    </Button>
-                    {step !== 'idle' && <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} fluid>CANCEL</Button>}
-                </div>
-            </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 🌟 [၂] Main Settings UI (Global CSS Override မဖြစ်အောင် သီးသန့်ရေးဆွဲထားသည်)
   return (
     <div className="settings-content custom-scroll">
+      
+      {/* 🌟 ဤ <style> block သည် Teact ၏ CSS ဖြတ်တောက်မှုကို ကာကွယ်ရန် သီးသန့်ရေးဆွဲထားခြင်းဖြစ်သည် 🌟 */}
+      <style>{`
+        .ar-wrapper { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+        
+        .ar-card { 
+          display: flex; align-items: center; justify-content: space-between; 
+          padding: 1rem; background: var(--color-background); 
+          border-radius: 0.75rem; border: 1px solid var(--color-borders);
+          cursor: pointer; transition: background 0.2s;
+        }
+        .ar-card:hover { background: var(--color-chat-hover); }
+        
+        .ar-text-col { display: flex; flex-direction: column; gap: 0.25rem; }
+        .ar-title { font-size: 1rem; font-weight: 500; color: var(--color-text); }
+        .ar-desc { font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.4; }
+        
+        .ar-switch { 
+          width: 44px; height: 24px; border-radius: 12px; 
+          background-color: var(--color-borders); position: relative; 
+          transition: background-color 0.3s ease; flex-shrink: 0;
+        }
+        .ar-switch.on { background-color: var(--color-primary); }
+        .ar-switch-thumb { 
+          width: 20px; height: 20px; border-radius: 50%; background-color: #fff; 
+          position: absolute; top: 2px; left: 2px; 
+          transition: left 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .ar-switch.on .ar-switch-thumb { left: 22px; }
+        
+        .ar-textarea-group { display: flex; flex-direction: column; gap: 0.5rem; transition: opacity 0.3s; }
+        .ar-textarea-group.disabled { opacity: 0.5; pointer-events: none; }
+        .ar-textarea-label { font-size: 0.875rem; font-weight: 500; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.5px; margin-left: 0.25rem; }
+        
+        .ar-textarea { 
+          width: 100%; min-height: 120px; padding: 1rem; border-radius: 0.75rem; 
+          border: 1px solid var(--color-borders); background: var(--color-background); 
+          color: var(--color-text); font-family: inherit; font-size: 1rem; 
+          resize: vertical; outline: none; line-height: 1.5; box-sizing: border-box;
+        }
+        .ar-textarea:focus { border-color: var(--color-primary); }
+        
+        .ar-error { color: var(--color-error); text-align: center; font-size: 0.875rem; background: rgba(223, 63, 64, 0.1); padding: 0.75rem; border-radius: 0.5rem; }
+        
+        .ar-connect-box { display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; max-width: 320px; margin: 2rem auto; }
+        .ar-icon-circle { width: 4.5rem; height: 4.5rem; border-radius: 50%; background: rgba(51, 144, 236, 0.1); display: flex; align-items: center; justify-content: center; color: var(--color-primary); margin: 0 auto; }
+      `}</style>
+
       <div className="settings-header">
         <h3 className="settings-header-title">Away Messages</h3>
       </div>
       
-      {/* settings-main-menu class ကိုဖြုတ်ပြီး ကိုယ်ပိုင် Layout ကိုအသုံးပြုထားသည် */}
-      <div style={{ padding: '20px', boxSizing: 'border-box', width: '100%' }}>
-        
-        {/* Toggle Switch Component */}
-        <div 
-          onClick={() => setIsEnabled(!isEnabled)}
-          style={{ 
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-            padding: '16px', backgroundColor: 'var(--color-background, #ffffff)', 
-            borderRadius: '12px', border: '1px solid var(--color-borders, #dfe1e5)',
-            cursor: 'pointer', marginBottom: '24px', boxSizing: 'border-box',
-            width: '100%'
-          }}
-        >
-          {/* Spans အစား Block Elements များကို သုံးထားသဖြင့် စာပူးခြင်း လုံးဝမဖြစ်တော့ပါ */}
-          <div style={{ flex: 1, paddingRight: '16px', boxSizing: 'border-box' }}>
-            <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text, #000000)', marginBottom: '4px', display: 'block' }}>
-              Enable Auto-Reply
-            </div>
-            <div style={{ fontSize: '14px', color: 'var(--color-text-secondary, #707579)', lineHeight: '1.4', display: 'block' }}>
-              Reply automatically to private chats.
-            </div>
-          </div>
+      {!isLinked ? (
+        /* 🌟 [၁] မချိတ်ဆက်ရသေးသော အခြေအနေ (Login/Connect UI) 🌟 */
+        <div className="ar-wrapper">
+          <div className="ar-connect-box">
+            
+            {step === 'idle' && (
+              <>
+                <div className="ar-icon-circle">
+                  {/* Clean SVG Message Icon */}
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </div>
+                <div>
+                  <div className="ar-title" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Connect Server</div>
+                  <div className="ar-desc">Enable auto-reply for your private messages when you are away.</div>
+                </div>
+              </>
+            )}
 
-          {/* iOS / Telegram ပုံစံ Switch */}
-          <div style={{ 
-            width: '48px', height: '28px', borderRadius: '14px', 
-            backgroundColor: isEnabled ? 'var(--color-primary, #3390ec)' : '#c4c9cc',
-            position: 'relative', transition: 'background-color 0.3s ease', flexShrink: 0 
-          }}>
-            <div style={{ 
-              width: '24px', height: '24px', backgroundColor: '#ffffff', borderRadius: '50%',
-              position: 'absolute', top: '2px', left: isEnabled ? '22px' : '2px',
-              transition: 'left 0.3s ease', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-            }} />
+            {(step === 'otp' || step === '2fa') && (
+              <>
+                <div className="ar-icon-circle">
+                   {/* Clean SVG Lock Icon */}
+                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </div>
+                <div>
+                  <div className="ar-title" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{step === 'otp' ? 'Verification Code' : 'Two-Step Verification'}</div>
+                  <div className="ar-desc">{step === 'otp' ? 'Enter the code sent to your Telegram app.' : 'Your account is protected with an additional password.'}</div>
+                </div>
+                <div style={{ width: '100%', textAlign: 'left' }}>
+                  {step === 'otp' && <InputText label="OTP Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />}
+                  {step === '2fa' && <InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />}
+                </div>
+              </>
+            )}
+
+            {errorMsg && <div className="ar-error">{errorMsg}</div>}
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <Button onClick={step === 'idle' ? handleAutoRequestCode : handleVerifyCode} isLoading={isLoading} fluid>
+                  {step === 'idle' ? "REQUEST CODE" : "VERIFY & CONNECT"}
+              </Button>
+              {step !== 'idle' && <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} fluid>CANCEL</Button>}
+            </div>
+
           </div>
         </div>
-
-        {/* Textarea Component */}
-        <div style={{ opacity: isEnabled ? 1 : 0.5, pointerEvents: isEnabled ? 'auto' : 'none', transition: 'opacity 0.3s ease', boxSizing: 'border-box', width: '100%' }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-primary, #3390ec)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Message Content
+      ) : (
+        /* 🌟 [၂] ချိတ်ဆက်ပြီးသော အခြေအနေ (Main Settings UI) 🌟 */
+        <div className="ar-wrapper">
+          
+          {/* Professional Toggle Card */}
+          <div className="ar-card" onClick={() => setIsEnabled(!isEnabled)}>
+            <div className="ar-text-col">
+              <div className="ar-title">Enable Auto-Reply</div>
+              <div className="ar-desc">Reply automatically to private chats.</div>
+            </div>
+            <div className={`ar-switch ${isEnabled ? 'on' : ''}`}>
+              <div className="ar-switch-thumb"></div>
+            </div>
           </div>
-          <textarea
-            value={replyText}
-            onChange={(e: any) => setReplyText(e.target.value)}
-            disabled={!isEnabled}
-            style={{
-              width: '100%', minHeight: '130px', padding: '16px', fontSize: '15px', 
-              borderRadius: '12px', border: '1px solid var(--color-borders, #dfe1e5)',
-              backgroundColor: 'var(--color-background, #ffffff)', color: 'var(--color-text, #000000)',
-              outline: 'none', resize: 'vertical', lineHeight: '1.5', fontFamily: 'inherit',
-              boxSizing: 'border-box'
-            }}
-          />
-          <div style={{ fontSize: '13px', color: 'var(--color-text-secondary, #707579)', marginTop: '8px' }}>
-            You can write a long message. Drag the corner to resize the box.
-          </div>
-        </div>
 
-        <div style={{ marginTop: '32px', boxSizing: 'border-box', width: '100%' }}>
-            {errorMsg && <div style={{ color: '#df3f40', textAlign: 'center', marginBottom: '16px', fontSize: '14px' }}>{errorMsg}</div>}
+          {/* Responsive Textarea */}
+          <div className={`ar-textarea-group ${!isEnabled ? 'disabled' : ''}`}>
+            <div className="ar-textarea-label">Message Content</div>
+            <textarea
+              className="ar-textarea"
+              value={replyText}
+              onChange={(e: any) => setReplyText(e.target.value)}
+              disabled={!isEnabled}
+              placeholder="Type your away message here..."
+            />
+            <div className="ar-desc" style={{ marginLeft: '0.25rem' }}>
+              You can write a long message. Drag the bottom right corner to resize the box.
+            </div>
+          </div>
+
+          {errorMsg && <div className="ar-error">{errorMsg}</div>}
+
+          <div style={{ marginTop: '0.5rem' }}>
             <Button onClick={handleSaveSettings} isLoading={isLoading} fluid>SAVE SETTINGS</Button>
-        </div>
+          </div>
 
-      </div>
+        </div>
+      )}
     </div>
   );
 };
