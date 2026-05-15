@@ -229,16 +229,29 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
             </div>
           ) : (
             <>
-              {/* Native Telegram Checkbox ကို အသုံးပြုထားပါသည် */}
+              {/* 100% Working Native Checkbox (Click ပြဿနာ အရှင်းရှင်းထားပါသည်) */}
               <div className="settings-item pt-3">
-                <Checkbox
-                  checked={isEnabled}
-                  onChange={(checked) => setIsEnabled(checked)}
-                  label="Enable Away Messages"
-                />
-                <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.5', paddingLeft: '32px' }}>
-                  Automatically reply to incoming private messages when you are away.
-                </p>
+                <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer', width: '100%', userSelect: 'none' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={isEnabled} 
+                    onChange={(e) => setIsEnabled(e.target.checked)} 
+                    style={{ 
+                      minWidth: '22px', 
+                      height: '22px', 
+                      marginTop: '2px', 
+                      marginRight: '16px', 
+                      cursor: 'pointer', 
+                      accentColor: '#3390ec' 
+                    }} 
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '16px', color: 'var(--color-text)' }}>Enable Away Messages</span>
+                    <span style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
+                      Automatically reply to incoming private messages when you are away.
+                    </span>
+                  </div>
+                </label>
               </div>
 
               {/* Message Input Box အား Professional ဆန်ဆန် ဒီဇိုင်းဆွဲထားပါသည် */}
