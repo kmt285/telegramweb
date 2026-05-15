@@ -139,10 +139,6 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
   return (
     <div className="settings-content custom-scroll">
-
-      <div className="settings-header">
-        <h3 className="settings-header-title">Away Messages</h3>
-      </div>
       
       {!isLinked ? (
         /* 🌟 [၁] မချိတ်ဆက်ရသေးသော အခြေအနေ (Login/Connect UI) 🌟 */
@@ -197,8 +193,8 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
           {/* Professional Toggle Card */}
           <div className="ar-card" onClick={() => setIsEnabled(!isEnabled)}>
             <div className="ar-text-col">
-              <div className="ar-title">Enable Auto-Reply</div>
-              <div className="ar-desc">Reply automatically to private chats.</div>
+              <div className="ar-title">Away Messages</div>
+              <div className="ar-desc">Reply automatically when you are off.</div>
             </div>
             <div className={`ar-switch ${isEnabled ? 'on' : ''}`}>
               <div className="ar-switch-thumb"></div>
