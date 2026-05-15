@@ -179,7 +179,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
     );
   }
 
-  return (
+return (
     <div className="settings-content custom-scroll">
       <div className="settings-header">
         <h3 className="settings-header-title">Away Messages</h3>
@@ -187,13 +187,18 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
       <div className="settings-main-menu">
           {!isLinked ? (
-            <div className="settings-item pt-3 pb-3" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem 1rem' }}>
-              {errorMsg && <p style={{ color: 'var(--color-error)', fontSize: '14px', marginBottom: '1rem', width: '100%' }}>{errorMsg}</p>}
+            <div className="settings-item pt-3 pb-3" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2.5rem 1rem' }}>
+              {errorMsg && <p style={{ color: 'var(--color-error)', fontSize: '14px', marginBottom: '1.5rem', width: '100%', background: 'rgba(223, 63, 64, 0.1)', padding: '10px', borderRadius: '8px' }}>{errorMsg}</p>}
               
               {step === 'idle' && (
                 <div style={{ width: '100%', maxWidth: '320px' }}>
-                  <i className="icon-message" style={{ fontSize: '48px', color: 'var(--color-primary)', marginBottom: '1rem', display: 'block' }} />
-                  <h4 style={{ marginBottom: '1rem', fontWeight: 500 }}>Connect Server</h4>
+                  {/* 🌟 Professional Icon Wrapper */}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(51, 144, 236, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="icon-message" style={{ fontSize: '36px', color: '#3390ec' }} />
+                    </div>
+                  </div>
+                  <h4 style={{ marginBottom: '0.75rem', fontSize: '18px', fontWeight: 500, color: 'var(--color-text)' }}>Connect Server</h4>
                   <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem', fontSize: '15px', lineHeight: '1.5' }}>
                     Connect your account to enable away messages. A login code will be sent to your Telegram app.
                   </p>
@@ -205,16 +210,19 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
               {step === 'otp' && (
                 <div style={{ width: '100%', maxWidth: '320px' }}>
-                  <i className="icon-lock" style={{ fontSize: '48px', color: 'var(--color-primary)', marginBottom: '1rem', display: 'block' }} />
-                  <h4 style={{ marginBottom: '1rem', fontWeight: 500 }}>Verification Code</h4>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(51, 144, 236, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="icon-lock" style={{ fontSize: '36px', color: '#3390ec' }} />
+                    </div>
+                  </div>
+                  <h4 style={{ marginBottom: '0.75rem', fontSize: '18px', fontWeight: 500, color: 'var(--color-text)' }}>Verification Code</h4>
                   <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>
                     Enter the code sent to your Telegram app.
                   </p>
-                  {/* Input မကပ်နေစေရန် marginTop ဖြင့် ချိန်ထားပါသည် */}
-                  <div style={{ textAlign: 'left', marginBottom: '2rem', marginTop: '1rem' }}>
+                  <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
                     <InputText label="Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />
                   </div>
-                  <div style={{ display: 'flex', gap: '15px' }}>
+                  <div style={{ display: 'flex', gap: '12px' }}>
                       <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} style={{ flex: 1 }}>Cancel</Button>
                       <Button onClick={handleVerifyCode} isLoading={isLoading} style={{ flex: 1 }}>Verify</Button>
                   </div>
@@ -223,15 +231,19 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
               {step === '2fa' && (
                 <div style={{ width: '100%', maxWidth: '320px' }}>
-                  <i className="icon-password" style={{ fontSize: '48px', color: 'var(--color-primary)', marginBottom: '1rem', display: 'block' }} />
-                  <h4 style={{ marginBottom: '1rem', fontWeight: 500 }}>Two-Step Verification</h4>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(51, 144, 236, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="icon-password" style={{ fontSize: '36px', color: '#3390ec' }} />
+                    </div>
+                  </div>
+                  <h4 style={{ marginBottom: '0.75rem', fontSize: '18px', fontWeight: 500, color: 'var(--color-text)' }}>Two-Step Verification</h4>
                   <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>
                     Your account is protected with an additional password.
                   </p>
-                  <div style={{ textAlign: 'left', marginBottom: '2rem', marginTop: '1rem' }}>
+                  <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
                     <InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />
                   </div>
-                  <div style={{ display: 'flex', gap: '15px' }}>
+                  <div style={{ display: 'flex', gap: '12px' }}>
                       <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} style={{ flex: 1 }}>Cancel</Button>
                       <Button onClick={handleVerifyCode} isLoading={isLoading} style={{ flex: 1 }}>Submit</Button>
                   </div>
@@ -239,41 +251,47 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
               )}
             </div>
           ) : (
-            <>
-              {/* 100% Working Native Checkbox (Click ပြဿနာ အရှင်းရှင်းထားပါသည်) */}
-              <div className="settings-item pt-3">
-                <label style={{ display: 'flex', alignItems: 'flex-start', cursor: 'pointer', width: '100%', userSelect: 'none' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={isEnabled} 
-                    onChange={(e) => setIsEnabled(e.target.checked)} 
-                    style={{ 
-                      minWidth: '22px', 
-                      height: '22px', 
-                      marginTop: '2px', 
-                      marginRight: '16px', 
-                      cursor: 'pointer', 
-                      accentColor: '#3390ec' 
-                    }} 
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '16px', color: 'var(--color-text)' }}>Enable Away Messages</span>
-                    <span style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
-                      Automatically reply to incoming private messages when you are away.
-                    </span>
-                  </div>
-                </label>
+            <div style={{ padding: '0 1rem' }}>
+              {/* 🌟 Professional Custom Toggle Switch (No Native Checkbox Issues) */}
+              <div 
+                className="settings-item pt-3 pb-3" 
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', borderBottom: '1px solid var(--color-borders)' }}
+                onClick={() => setIsEnabled(!isEnabled)}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', paddingRight: '20px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text)' }}>Enable Away Messages</span>
+                  <span style={{ marginTop: '4px', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.4' }}>
+                    Automatically reply to incoming private messages when you are away.
+                  </span>
+                </div>
+                {/* Toggle UI */}
+                <div style={{ 
+                    position: 'relative', width: '42px', height: '24px', flexShrink: 0,
+                    background: isEnabled ? '#3390ec' : 'var(--color-borders)', 
+                    borderRadius: '12px', transition: 'background 0.3s ease' 
+                }}>
+                    <div style={{ 
+                        position: 'absolute', top: '2px', left: isEnabled ? '20px' : '2px', 
+                        width: '20px', height: '20px', background: '#ffffff', 
+                        borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                    }} />
+                </div>
               </div>
 
-              {/* Message Input Box အား Professional ဆန်ဆန် ဒီဇိုင်းဆွဲထားပါသည် */}
-              <div className="settings-item pt-3">
-                <h4 style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '10px' }}>Away Message</h4>
+              {/* 🌟 Professional Text Area with Disabled State UX */}
+              <div className="settings-item pt-4">
+                <h4 style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Away Message
+                </h4>
                 <div style={{ 
-                  border: '1px solid var(--color-borders)', 
+                  border: isEnabled ? '1px solid #3390ec' : '1px solid var(--color-borders)', 
                   borderRadius: '10px', 
-                  background: isEnabled ? 'var(--color-background)' : 'var(--color-background-compact)', 
-                  padding: '5px',
-                  transition: 'background-color 0.2s, border-color 0.2s'
+                  background: 'var(--color-background-compact)', 
+                  padding: '8px',
+                  transition: 'all 0.3s ease',
+                  opacity: isEnabled ? 1 : 0.5,           // 👈 သေချာမှိန်သွားပါမည်
+                  pointerEvents: isEnabled ? 'auto' : 'none' // 👈 ပိတ်ထားချိန် နှိပ်၍မရပါ
                 }}>
                   <textarea
                     value={replyText}
@@ -286,25 +304,31 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
                       border: 'none',
                       background: 'transparent',
                       outline: 'none',
-                      color: isEnabled ? 'var(--color-text)' : 'var(--color-text-secondary)',
-                      fontSize: '16px',
+                      color: 'var(--color-text)',
+                      fontSize: '15px',
                       resize: 'none',
                       fontFamily: 'inherit',
-                      padding: '10px',
+                      padding: '8px',
                       lineHeight: '1.5'
                     }}
                   />
                 </div>
               </div>
 
-              {errorMsg && <div className="settings-item pt-2"><p style={{ color: 'var(--color-error)', fontSize: '14px', textAlign: 'center' }}>{errorMsg}</p></div>}
+              {errorMsg && (
+                <div className="settings-item pt-3">
+                  <p style={{ color: 'var(--color-error)', fontSize: '14px', textAlign: 'center', background: 'rgba(223, 63, 64, 0.1)', padding: '10px', borderRadius: '8px' }}>
+                    {errorMsg}
+                  </p>
+                </div>
+              )}
 
-              <div className="settings-item pt-4 pb-3">
+              <div className="settings-item pt-4 pb-4">
                 <Button onClick={handleSaveSettings} isLoading={isLoading} fluid>
                   Save Settings
                 </Button>
               </div>
-            </>
+            </div>
           )}
       </div>
     </div>
