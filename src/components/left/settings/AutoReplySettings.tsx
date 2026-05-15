@@ -135,28 +135,28 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
   if (isFetching) return null;
 
-  // 🌟 [၁] Login/Connect Step UI (No Icons)
+  // 🌟 [၁] Connect Server / OTP UI (ရှင်းလင်းသပ်ရပ်စွာ)
   if (!isLinked) {
     return (
       <div className="settings-content custom-scroll">
         <div className="settings-header">
           <h3 className="settings-header-title">Away Messages</h3>
         </div>
-        <div className="settings-main-menu" style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}>
-            {errorMsg && <p style={{ color: 'var(--color-error)', fontSize: '14px', marginBottom: '1.5rem' }}>{errorMsg}</p>}
+        <div style={{ padding: '32px 24px', boxSizing: 'border-box' }}>
+            {errorMsg && <div style={{ color: '#df3f40', fontSize: '14px', marginBottom: '24px', textAlign: 'center' }}>{errorMsg}</div>}
             
             <div style={{ width: '100%', maxWidth: '320px', margin: '0 auto' }}>
-                <h4 style={{ fontSize: '20px', fontWeight: 500, marginBottom: '8px' }}>
+                <div style={{ fontSize: '20px', fontWeight: 500, marginBottom: '8px', color: 'var(--color-text, #000)', textAlign: 'center' }}>
                     {step === 'idle' ? "Connect Server" : step === 'otp' ? "Enter Code" : "2FA Password"}
-                </h4>
-                <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem', fontSize: '15px' }}>
+                </div>
+                <div style={{ color: 'var(--color-text-secondary, #707579)', marginBottom: '32px', fontSize: '15px', textAlign: 'center', lineHeight: '1.5' }}>
                     {step === 'idle' ? "Enable auto-reply for your private messages." : "Please verify your account to continue."}
-                </p>
+                </div>
 
-                {step === 'otp' && <div style={{ textAlign: 'left', marginBottom: '20px' }}><InputText label="OTP Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} /></div>}
-                {step === '2fa' && <div style={{ textAlign: 'left', marginBottom: '20px' }}><InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} /></div>}
+                {step === 'otp' && <div style={{ marginBottom: '24px' }}><InputText label="OTP Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} /></div>}
+                {step === '2fa' && <div style={{ marginBottom: '24px' }}><InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} /></div>}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <Button onClick={step === 'idle' ? handleAutoRequestCode : handleVerifyCode} isLoading={isLoading} fluid>
                         {step === 'idle' ? "REQUEST CODE" : "CONTINUE"}
                     </Button>
@@ -168,65 +168,75 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
     );
   }
 
-  // 🌟 [၂] Main Settings UI (Professional & Responsive)
+  // 🌟 [၂] Main Settings UI (Global CSS Override မဖြစ်အောင် သီးသန့်ရေးဆွဲထားသည်)
   return (
     <div className="settings-content custom-scroll">
       <div className="settings-header">
         <h3 className="settings-header-title">Away Messages</h3>
       </div>
       
-      <div className="settings-main-menu" style={{ padding: '1rem' }}>
+      {/* settings-main-menu class ကိုဖြုတ်ပြီး ကိုယ်ပိုင် Layout ကိုအသုံးပြုထားသည် */}
+      <div style={{ padding: '20px', boxSizing: 'border-box', width: '100%' }}>
         
-        {/* Professional Native Switch Wrapper */}
+        {/* Toggle Switch Component */}
         <div 
           onClick={() => setIsEnabled(!isEnabled)}
           style={{ 
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-            padding: '16px', background: 'var(--color-background)', 
-            borderRadius: '12px', cursor: 'pointer', marginBottom: '20px',
-            border: '1px solid var(--color-borders)'
+            padding: '16px', backgroundColor: 'var(--color-background, #ffffff)', 
+            borderRadius: '12px', border: '1px solid var(--color-borders, #dfe1e5)',
+            cursor: 'pointer', marginBottom: '24px', boxSizing: 'border-box',
+            width: '100%'
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '16px', fontWeight: 500 }}>Enable Auto-Reply</span>
-            <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>Reply automatically to private chats.</span>
+          {/* Spans အစား Block Elements များကို သုံးထားသဖြင့် စာပူးခြင်း လုံးဝမဖြစ်တော့ပါ */}
+          <div style={{ flex: 1, paddingRight: '16px', boxSizing: 'border-box' }}>
+            <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text, #000000)', marginBottom: '4px', display: 'block' }}>
+              Enable Auto-Reply
+            </div>
+            <div style={{ fontSize: '14px', color: 'var(--color-text-secondary, #707579)', lineHeight: '1.4', display: 'block' }}>
+              Reply automatically to private chats.
+            </div>
           </div>
+
+          {/* iOS / Telegram ပုံစံ Switch */}
           <div style={{ 
-            width: '44px', height: '24px', borderRadius: '12px', 
-            background: isEnabled ? 'var(--color-primary)' : '#ccc',
-            position: 'relative', transition: '0.3s'
+            width: '48px', height: '28px', borderRadius: '14px', 
+            backgroundColor: isEnabled ? 'var(--color-primary, #3390ec)' : '#c4c9cc',
+            position: 'relative', transition: 'background-color 0.3s ease', flexShrink: 0 
           }}>
             <div style={{ 
-              width: '20px', height: '20px', borderRadius: '50%', background: '#fff',
+              width: '24px', height: '24px', backgroundColor: '#ffffff', borderRadius: '50%',
               position: 'absolute', top: '2px', left: isEnabled ? '22px' : '2px',
-              transition: '0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              transition: 'left 0.3s ease', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
             }} />
           </div>
         </div>
 
-        {/* Responsive Textarea Box */}
-        <div style={{ opacity: isEnabled ? 1 : 0.5, pointerEvents: isEnabled ? 'auto' : 'none', transition: '0.3s' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', marginLeft: '4px', marginBottom: '8px', textTransform: 'uppercase' }}>
+        {/* Textarea Component */}
+        <div style={{ opacity: isEnabled ? 1 : 0.5, pointerEvents: isEnabled ? 'auto' : 'none', transition: 'opacity 0.3s ease', boxSizing: 'border-box', width: '100%' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-primary, #3390ec)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Message Content
-          </h4>
+          </div>
           <textarea
             value={replyText}
             onChange={(e: any) => setReplyText(e.target.value)}
-            placeholder="Type your away message here..."
+            disabled={!isEnabled}
             style={{
-              width: '100%', minHeight: '120px', padding: '14px', fontSize: '15px', 
-              borderRadius: '12px', border: '1px solid var(--color-borders)',
-              background: 'var(--color-background)', color: 'var(--color-text)',
-              outline: 'none', resize: 'vertical', lineHeight: '1.5', fontFamily: 'inherit'
+              width: '100%', minHeight: '130px', padding: '16px', fontSize: '15px', 
+              borderRadius: '12px', border: '1px solid var(--color-borders, #dfe1e5)',
+              backgroundColor: 'var(--color-background, #ffffff)', color: 'var(--color-text, #000000)',
+              outline: 'none', resize: 'vertical', lineHeight: '1.5', fontFamily: 'inherit',
+              boxSizing: 'border-box'
             }}
           />
-          <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '8px', paddingLeft: '4px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--color-text-secondary, #707579)', marginTop: '8px' }}>
             You can write a long message. Drag the corner to resize the box.
-          </p>
+          </div>
         </div>
 
-        <div style={{ marginTop: '24px' }}>
-            {errorMsg && <p style={{ color: 'var(--color-error)', textAlign: 'center', marginBottom: '12px' }}>{errorMsg}</p>}
+        <div style={{ marginTop: '32px', boxSizing: 'border-box', width: '100%' }}>
+            {errorMsg && <div style={{ color: '#df3f40', textAlign: 'center', marginBottom: '16px', fontSize: '14px' }}>{errorMsg}</div>}
             <Button onClick={handleSaveSettings} isLoading={isLoading} fluid>SAVE SETTINGS</Button>
         </div>
 
