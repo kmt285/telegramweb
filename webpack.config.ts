@@ -209,6 +209,12 @@ export default function createConfig(
         csp: CSP,
         template: 'src/index.html',
       }),
+      // Admin Panel အတွက် သီးသန့် Build ထုတ်ပေးရန်
+      new HtmlWebpackPlugin({
+        template: 'src/admin.html',
+        filename: 'admin.html',
+        inject: false,
+      }),
       new MiniCssExtractPlugin({
         filename: '[name].[contenthash].css',
         chunkFilename: '[name].[chunkhash].css',
