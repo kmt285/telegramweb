@@ -140,52 +140,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
   return (
     <div className="settings-content custom-scroll">
       
-      {/* 🌟 ဤ <style> block သည် Teact ၏ CSS ဖြတ်တောက်မှုကို ကာကွယ်ရန် သီးသန့်ရေးဆွဲထားခြင်းဖြစ်သည် 🌟 */}
-      <style>{`
-        .ar-wrapper { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
-        
-        .ar-card { 
-          display: flex; align-items: center; justify-content: space-between; 
-          padding: 1rem; background: var(--color-background); 
-          border-radius: 0.75rem; border: 1px solid var(--color-borders);
-          cursor: pointer; transition: background 0.2s;
-        }
-        .ar-card:hover { background: var(--color-chat-hover); }
-        
-        .ar-text-col { display: flex; flex-direction: column; gap: 0.25rem; }
-        .ar-title { font-size: 1rem; font-weight: 500; color: var(--color-text); }
-        .ar-desc { font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.4; }
-        
-        .ar-switch { 
-          width: 44px; height: 24px; border-radius: 12px; 
-          background-color: var(--color-borders); position: relative; 
-          transition: background-color 0.3s ease; flex-shrink: 0;
-        }
-        .ar-switch.on { background-color: var(--color-primary); }
-        .ar-switch-thumb { 
-          width: 20px; height: 20px; border-radius: 50%; background-color: #fff; 
-          position: absolute; top: 2px; left: 2px; 
-          transition: left 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        .ar-switch.on .ar-switch-thumb { left: 22px; }
-        
-        .ar-textarea-group { display: flex; flex-direction: column; gap: 0.5rem; transition: opacity 0.3s; }
-        .ar-textarea-group.disabled { opacity: 0.5; pointer-events: none; }
-        .ar-textarea-label { font-size: 0.875rem; font-weight: 500; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.5px; margin-left: 0.25rem; }
-        
-        .ar-textarea { 
-          width: 100%; min-height: 120px; padding: 1rem; border-radius: 0.75rem; 
-          border: 1px solid var(--color-borders); background: var(--color-background); 
-          color: var(--color-text); font-family: inherit; font-size: 1rem; 
-          resize: vertical; outline: none; line-height: 1.5; box-sizing: border-box;
-        }
-        .ar-textarea:focus { border-color: var(--color-primary); }
-        
-        .ar-error { color: var(--color-error); text-align: center; font-size: 0.875rem; background: rgba(223, 63, 64, 0.1); padding: 0.75rem; border-radius: 0.5rem; }
-        
-        .ar-connect-box { display: flex; flex-direction: column; gap: 1.5rem; align-items: center; text-align: center; max-width: 320px; margin: 2rem auto; }
-        .ar-icon-circle { width: 4.5rem; height: 4.5rem; border-radius: 50%; background: rgba(51, 144, 236, 0.1); display: flex; align-items: center; justify-content: center; color: var(--color-primary); margin: 0 auto; }
-      `}</style>
+      </style>
 
       <div className="settings-header">
         <h3 className="settings-header-title">Away Messages</h3>
