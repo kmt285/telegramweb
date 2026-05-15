@@ -153,7 +153,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
                 </div>
                 <div>
                   <div className="ar-title" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Connect Server</div>
-                  <div className="ar-desc">Enable auto-reply for your private messages when you are away.</div>
+                  <div className="ar-desc">Define messages that are automatically sent when you are off.</div>
                 </div>
               </>
             )}
@@ -179,7 +179,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <Button onClick={step === 'idle' ? handleAutoRequestCode : handleVerifyCode} isLoading={isLoading} fluid>
-                  {step === 'idle' ? "REQUEST CODE" : "VERIFY & CONNECT"}
+                  {step === 'idle' ? "CONNECT SERVER" : "VERIFY"}
               </Button>
               {step !== 'idle' && <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} fluid>CANCEL</Button>}
             </div>
@@ -194,7 +194,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
           <div className="ar-card" onClick={() => setIsEnabled(!isEnabled)}>
             <div className="ar-text-col">
               <div className="ar-title">Away Messages</div>
-              <div className="ar-desc">Reply automatically when you are off.</div>
+              <div className="ar-desc">Reply automatically when you are away.</div>
             </div>
             <div className={`ar-switch ${isEnabled ? 'on' : ''}`}>
               <div className="ar-switch-thumb"></div>
@@ -203,7 +203,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
           {/* Responsive Textarea */}
           <div className={`ar-textarea-group ${!isEnabled ? 'disabled' : ''}`}>
-            <div className="ar-textarea-label">Message Content</div>
+            <div className="ar-textarea-label">Message Box</div>
             <textarea
               className="ar-textarea"
               value={replyText}
@@ -211,15 +211,14 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
               disabled={!isEnabled}
               placeholder="Type your away message here..."
             />
-            <div className="ar-desc" style={{ marginLeft: '0.25rem' }}>
-              You can write a long message. Drag the bottom right corner to resize the box.
-            </div>
           </div>
 
           {errorMsg && <div className="ar-error">{errorMsg}</div>}
 
           <div style={{ marginTop: '0.5rem' }}>
-            <Button onClick={handleSaveSettings} isLoading={isLoading} fluid>SAVE SETTINGS</Button>
+            <Button onClick={handleSaveSettings} disabled={isLoading} fluid>
+              {isLoading ? "PLEASE WAIT..." : "SAVE SETTINGS"}
+            </Button>
           </div>
 
         </div>
