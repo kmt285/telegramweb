@@ -3,6 +3,7 @@ import { memo, useState, useCallback, useEffect } from '../../../lib/teact/teact
 import { withGlobal } from '../../../global';
 
 import Button from '../../ui/Button';
+import Checkbox from '../../ui/Checkbox';
 import InputText from '../../ui/InputText';
 import './Settings.scss';
 
@@ -175,104 +176,106 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
       <div className="settings-main-menu">
           {!isLinked ? (
-            <div className="settings-item pt-3 pb-3">
-              {errorMsg && <p style={{ color: 'var(--color-error)', fontSize: '14px', marginBottom: '1rem' }}>{errorMsg}</p>}
+            <div className="settings-item pt-3 pb-3" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem 1rem' }}>
+              {errorMsg && <p style={{ color: 'var(--color-error)', fontSize: '14px', marginBottom: '1rem', width: '100%' }}>{errorMsg}</p>}
               
               {step === 'idle' && (
-                <>
-                  <h4 className="settings-item-header">Connect Server</h4>
-                  <p className="settings-item-description" style={{ marginBottom: '1.5rem', color: 'var(--color-text-secondary)' }}>
+                <div style={{ width: '100%', maxWidth: '320px' }}>
+                  <i className="icon-message" style={{ fontSize: '48px', color: 'var(--color-primary)', marginBottom: '1rem', display: 'block' }} />
+                  <h4 style={{ marginBottom: '1rem', fontWeight: 500 }}>Connect Server</h4>
+                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem', fontSize: '15px', lineHeight: '1.5' }}>
                     Connect your account to enable away messages. A login code will be sent to your Telegram app.
                   </p>
                   <Button onClick={handleAutoRequestCode} isLoading={isLoading} fluid>
                     Request Login Code
                   </Button>
-                </>
+                </div>
               )}
 
               {step === 'otp' && (
-                <>
-                  <h4 className="settings-item-header">Verification Code</h4>
-                  <p className="settings-item-description" style={{ marginBottom: '1.5rem', color: 'var(--color-text-secondary)' }}>
-                    Enter the code sent to your Telegram app. You can safely leave this screen to check your messages.
+                <div style={{ width: '100%', maxWidth: '320px' }}>
+                  <i className="icon-lock" style={{ fontSize: '48px', color: 'var(--color-primary)', marginBottom: '1rem', display: 'block' }} />
+                  <h4 style={{ marginBottom: '1rem', fontWeight: 500 }}>Verification Code</h4>
+                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>
+                    Enter the code sent to your Telegram app.
                   </p>
-                  <InputText label="Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
-                      <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} fluid>Cancel</Button>
-                      <Button onClick={handleVerifyCode} isLoading={isLoading} fluid>Verify</Button>
+                  {/* Input မကပ်နေစေရန် marginTop ဖြင့် ချိန်ထားပါသည် */}
+                  <div style={{ textAlign: 'left', marginBottom: '2rem', marginTop: '1rem' }}>
+                    <InputText label="Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />
                   </div>
-                </>
+                  <div style={{ display: 'flex', gap: '15px' }}>
+                      <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} style={{ flex: 1 }}>Cancel</Button>
+                      <Button onClick={handleVerifyCode} isLoading={isLoading} style={{ flex: 1 }}>Verify</Button>
+                  </div>
+                </div>
               )}
 
               {step === '2fa' && (
-                <>
-                  <h4 className="settings-item-header">Two-Step Verification</h4>
-                  <p className="settings-item-description" style={{ marginBottom: '1.5rem', color: 'var(--color-text-secondary)' }}>
+                <div style={{ width: '100%', maxWidth: '320px' }}>
+                  <i className="icon-password" style={{ fontSize: '48px', color: 'var(--color-primary)', marginBottom: '1rem', display: 'block' }} />
+                  <h4 style={{ marginBottom: '1rem', fontWeight: 500 }}>Two-Step Verification</h4>
+                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', fontSize: '15px', lineHeight: '1.5' }}>
                     Your account is protected with an additional password.
                   </p>
-                  <InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem' }}>
-                      <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} fluid>Cancel</Button>
-                      <Button onClick={handleVerifyCode} isLoading={isLoading} fluid>Submit</Button>
+                  <div style={{ textAlign: 'left', marginBottom: '2rem', marginTop: '1rem' }}>
+                    <InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />
                   </div>
-                </>
+                  <div style={{ display: 'flex', gap: '15px' }}>
+                      <Button color="danger" className="translucent" onClick={handleCancelSetup} disabled={isLoading} style={{ flex: 1 }}>Cancel</Button>
+                      <Button onClick={handleVerifyCode} isLoading={isLoading} style={{ flex: 1 }}>Submit</Button>
+                  </div>
+                </div>
               )}
             </div>
           ) : (
             <>
-              <div className="settings-item" style={{ padding: '16px 20px', cursor: 'pointer' }} onClick={() => setIsEnabled(!isEnabled)}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text)' }}>Enable Away Messages</span>
-                  <div style={{ 
-                      position: 'relative', width: '38px', height: '22px', 
-                      background: isEnabled ? '#3390ec' : 'var(--color-borders)', 
-                      borderRadius: '12px', transition: 'background 0.3s ease' 
-                  }}>
-                      <div style={{ 
-                          position: 'absolute', top: '2px', left: isEnabled ? '18px' : '2px', 
-                          width: '18px', height: '18px', background: '#fff', 
-                          borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', 
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
-                      }} />
-                  </div>
-                </div>
-                <p className="settings-item-description" style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '14px', margin: '4px 0 0 0' }}>
+              {/* Native Telegram Checkbox ကို အသုံးပြုထားပါသည် */}
+              <div className="settings-item pt-3">
+                <Checkbox
+                  checked={isEnabled}
+                  onChange={(checked) => setIsEnabled(checked)}
+                  label="Enable Away Messages"
+                />
+                <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '14px', lineHeight: '1.5', paddingLeft: '32px' }}>
                   Automatically reply to incoming private messages when you are away.
                 </p>
               </div>
 
+              {/* Message Input Box အား Professional ဆန်ဆန် ဒီဇိုင်းဆွဲထားပါသည် */}
               <div className="settings-item pt-3">
-                <h4 className="settings-item-header mb-2" style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Message</h4>
-                <textarea
-                  value={replyText}
-                  onChange={(e: any) => setReplyText(e.target.value)}
-                  disabled={!isEnabled}
-                  rows={4}
-                  placeholder="Write your away message here..."
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--color-borders)',
-                    background: isEnabled ? 'var(--color-background)' : 'var(--color-background-compact)',
-                    color: isEnabled ? 'var(--color-text)' : 'var(--color-text-secondary)',
-                    fontSize: '15px',
-                    resize: 'none',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    lineHeight: '1.5',
-                    fontFamily: 'inherit'
-                  }}
-                  onFocus={(e) => {
-                      if(isEnabled) e.target.style.border = '1px solid #3390ec';
-                  }}
-                  onBlur={(e) => e.target.style.border = '1px solid var(--color-borders)'}
-                />
+                <h4 style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '10px' }}>Away Message</h4>
+                <div style={{ 
+                  border: '1px solid var(--color-borders)', 
+                  borderRadius: '10px', 
+                  background: isEnabled ? 'var(--color-background)' : 'var(--color-background-compact)', 
+                  padding: '5px',
+                  transition: 'background-color 0.2s, border-color 0.2s'
+                }}>
+                  <textarea
+                    value={replyText}
+                    onChange={(e: any) => setReplyText(e.target.value)}
+                    disabled={!isEnabled}
+                    rows={4}
+                    placeholder="Write your away message here..."
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      background: 'transparent',
+                      outline: 'none',
+                      color: isEnabled ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                      fontSize: '16px',
+                      resize: 'none',
+                      fontFamily: 'inherit',
+                      padding: '10px',
+                      lineHeight: '1.5'
+                    }}
+                  />
+                </div>
               </div>
 
-              {errorMsg && <div className="settings-item"><p style={{ color: 'var(--color-error)', fontSize: '14px' }}>{errorMsg}</p></div>}
+              {errorMsg && <div className="settings-item pt-2"><p style={{ color: 'var(--color-error)', fontSize: '14px', textAlign: 'center' }}>{errorMsg}</p></div>}
 
-              <div className="settings-item pt-3">
+              <div className="settings-item pt-4 pb-3">
                 <Button onClick={handleSaveSettings} isLoading={isLoading} fluid>
                   Save Settings
                 </Button>
