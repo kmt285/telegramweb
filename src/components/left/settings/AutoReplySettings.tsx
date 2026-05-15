@@ -22,6 +22,9 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
   const [isLinked, setIsLinked] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const [replyText, setReplyText] = useState("I am currently unavailable. I will reply to you later.");
+  const [mediaData, setMediaData] = useState<string | null>(null);
+  const [mediaName, setMediaName] = useState<string | null>(null);
+  const [removeMedia, setRemoveMedia] = useState(false);
   
   const [step, setStep] = useState<'idle' | 'otp' | '2fa'>(() => {
     return (localStorage.getItem(`ar_setup_step_${safeUserId}`) as any) || 'idle';
@@ -47,6 +50,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
           setIsLinked(true);
           setIsEnabled(data.enabled);
           if (data.text) setReplyText(data.text);
+          if (data.media_name) setMediaName(data.media_name);
         } else {
           setIsLinked(false);
         }
@@ -116,13 +120,27 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
     setIsLoading(false);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { setErrorMsg("File is too large. Limit is 5MB."); return; }
+      setErrorMsg('');
+      const reader = new FileReader();
+      reader.onloadend = () => { setMediaData(reader.result as string); setMediaName(file.name); setRemoveMedia(false); };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/update_auto_reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-        body: JSON.stringify({ user_id: safeUserId, enabled: isEnabled, text: replyText })
+        body: JSON.stringify({ 
+            user_id: safeUserId, enabled: isEnabled, text: replyText,
+            media_data: mediaData, media_name: mediaName, remove_media: removeMedia
+        })
       });
       if (!res.ok) {
         setIsLinked(false);
@@ -130,6 +148,8 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
         setErrorMsg("Session expired. Please reconnect.");
       } else {
         setErrorMsg('');
+        setMediaData(null);
+        setRemoveMedia(false);
       }
     } catch (err) { setErrorMsg("Failed to save."); }
     setIsLoading(false);
@@ -195,6 +215,25 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
             <div className="ar-text-col">
               <div className="ar-title">Away Messages</div>
               <div className="ar-desc">Reply automatically when you are away.</div>
+              {/* Media Upload Box */}
+          <div className={`ar-textarea-group ${!isEnabled ? 'disabled' : ''}`} style={{ marginTop: '0.5rem' }}>
+            <div className="ar-textarea-label">Attachment (Optional)</div>
+            {!mediaName ? (
+              <label className="ar-media-upload">
+                <input type="file" accept="image/*, application/pdf, video/mp4" style={{ display: 'none' }} onChange={handleFileChange} disabled={!isEnabled} />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px', color: 'var(--color-primary)' }}><path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2-2.4-3.5-4.4-3.5h-1.2c-.7-3-3.2-5.2-6.2-5.6-3-.3-5.9 1.3-7.3 4-1.2 2.5-1 6.5.5 8.8m8.7-1.6V21"/><path d="M16 16l-4-4-4 4"/></svg>
+                <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Click to attach Image, Video or PDF (Max: 5MB)</span>
+              </label>
+            ) : (
+              <div className="ar-media-preview">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                  <span style={{ fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mediaName}</span>
+                </div>
+                <button onClick={() => { setMediaData(null); setMediaName(null); setRemoveMedia(true); }} style={{ background: 'rgba(223,63,64,0.1)', color: 'var(--color-error)', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }} disabled={!isEnabled}>Remove</button>
+              </div>
+            )}
+          </div>
             </div>
             <div className={`ar-switch ${isEnabled ? 'on' : ''}`}>
               <div className="ar-switch-thumb"></div>
