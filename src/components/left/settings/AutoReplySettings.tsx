@@ -138,37 +138,16 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
       
       if (!res.ok) {
         if (res.status === 400 || res.status === 401) {
-            // 🌟 (၁) Component UI အားလုံးကို ချက်ချင်း Unlink လုပ်မည်
+            // 🌟 Session ပြတ်သွားပါက အားလုံးကို မူလအခြေအနေသို့ ပြန်လည်သတ်မှတ်ပါမည်
             setIsLinked(false);
             setIsEnabled(false);
+            setStep('idle'); // ချက်ချင်း OTP မတောင်းတော့ဘဲ ပုံမှန် Request လုပ်ရမည့် မျက်နှာပြင်သို့ ပြန်ပို့ပါမည်
             
-            // 🌟 (၂) OTP နေရာသို့ တိုက်ရိုက်ရောက်စေရန် အလိုအလျောက် Code တောင်းပေးမည်
-            if (currentUserPhone) {
-                const formattedPhone = currentUserPhone.startsWith('+') ? currentUserPhone : `+${currentUserPhone}`;
-                setSavedPhone(formattedPhone);
-                try {
-                    const reqRes = await fetch(`${BACKEND_URL}/api/request_code`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-                        body: JSON.stringify({ phone_number: formattedPhone })
-                    });
-                    if (reqRes.ok) {
-                        setStep('otp');
-                        localStorage.setItem(`ar_setup_step_${safeUserId}`, 'otp');
-                        localStorage.setItem(`ar_setup_phone_${safeUserId}`, formattedPhone);
-                        setErrorMsg("Session terminated. A new code has been sent to your Telegram app.");
-                    } else {
-                        setStep('idle');
-                        setErrorMsg("Session terminated. Please request a new code.");
-                    }
-                } catch (e) {
-                    setStep('idle');
-                    setErrorMsg("Session terminated. Please request a new code.");
-                }
-            } else {
-                setStep('idle');
-                setErrorMsg("Session terminated. Please connect again.");
-            }
+            // LocalStorage အတွင်း မှတ်သားထားမှုများကိုပါ ဖျက်လင်းပါမည်
+            localStorage.removeItem(`ar_setup_step_${safeUserId}`);
+            localStorage.removeItem(`ar_setup_phone_${safeUserId}`);
+            
+            setErrorMsg("Session terminated. Please connect again.");
         } else {
             setErrorMsg("Failed to update settings. Please try again.");
         }
