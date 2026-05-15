@@ -139,8 +139,6 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
 
   return (
     <div className="settings-content custom-scroll">
-      
-      </style>
 
       <div className="settings-header">
         <h3 className="settings-header-title">Away Messages</h3>
