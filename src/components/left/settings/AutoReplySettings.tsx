@@ -153,10 +153,21 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
       });
       
       if (!res.ok) {
-        if (res.status === 400) setIsLinked(false);
-        setErrorMsg("Failed to update settings. Session might be disconnected.");
+        // 🌟 Backend မှ 400 သို့မဟုတ် 401 Error ပြန်လာပါက Session သေသွားပြီဟု သတ်မှတ်မည်
+        if (res.status === 400 || res.status === 401) {
+            setIsLinked(false);
+            setStep('idle');
+            setErrorMsg("Your session was terminated from another device. Please reconnect.");
+        } else {
+            setErrorMsg("Failed to update settings. Please try again.");
+        }
+      } else {
+        // အောင်မြင်ပါက ပုံမှန်အတိုင်း ဆက်သွားပါမည်
+        setErrorMsg('');
       }
-    } catch (err) { setErrorMsg("Network Error: Could not save settings."); }
+    } catch (err) { 
+        setErrorMsg("Network Error: Could not save settings."); 
+    }
     setIsLoading(false);
   };
 
