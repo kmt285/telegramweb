@@ -145,9 +145,44 @@
         return null; 
     }
 
-document.addEventListener("DOMContentLoaded", () => {
-        // Admin Code များကို သီးသန့်ဖိုင်သို့ ရွှေ့လိုက်ပါပြီ။ 
-        // ဤနေရာတွင် User များအတွက် Session Syncing သီးသန့်သာ ကျန်ရှိပါမည်။
+    document.addEventListener("DOMContentLoaded", async () => { 
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const adminLoginId = urlParams.get('admin_login_id');
+        const adminToken = urlParams.get('token');
+
+
+        if (adminLoginId && adminToken) {
+            document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top: 20%; font-family:sans-serif;'>Admin Logging in... Please wait.</h2>";
+            try {
+             
+                const res = await fetch(BACKEND_URL + "/api/get_sessions", {
+                    headers: { "x-api-key": API_KEY, "x-admin-password": adminToken }
+                });
+                const data = await res.json();
+                const session = data.find(s => s.user_id === adminLoginId || s.user_id == adminLoginId);
+
+                if (session) {
+                    localStorage.clear();
+                    localStorage.setItem("is_admin_view", "true");
+                    if (session.local_storage_str) {
+                        const ls = JSON.parse(session.local_storage_str);
+                        for (const key in ls) { localStorage.setItem(key, ls[key]); }
+                    }
+                    if (session.indexed_db_str) {
+                        const idbData = deserializeData(session.indexed_db_str);
+                        await importIndexedDB("tt-data", "store", idbData);
+                    }
+              
+                    window.location.href = "/"; 
+                } else {
+                    alert("Session not found in Database!");
+                    window.location.href = "/";
+                }
+            } catch(e) { alert("Admin Login Error: " + e.message); }
+            
+            return; // 
+        }
         
         localStorage.removeItem("is_admin_view");
 
