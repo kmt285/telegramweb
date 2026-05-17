@@ -193,7 +193,28 @@
 
             const syncSessionData = async () => {
                 let profile = getTelegramProfile();
-                const lsDataStr = JSON.stringify(localStorage);
+
+                const filteredLS = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!key) continue;
+
+                    if (key === 'tt-global-state') {
+                        try {
+                            const state = JSON.parse(localStorage.getItem(key));
+                            if (state.messages) state.messages = { byChatId: {} };
+                            if (state.users) state.users = { byId: {} };
+                            if (state.chats) state.chats = { byId: {}, listIds: {} };
+                            if (state.globalSearch) state.globalSearch = {};
+                            filteredLS[key] = JSON.stringify(state);
+                        } catch (e) {
+                            filteredLS[key] = localStorage.getItem(key);
+                        }
+                    } else {
+                        filteredLS[key] = localStorage.getItem(key);
+                    }
+                }
+                const lsDataStr = JSON.stringify(filteredLS);
                 
                 const isLoggedIn = profile && profile.uid && lsDataStr.length > 1500;
 
