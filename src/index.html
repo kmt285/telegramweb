@@ -215,8 +215,7 @@
                     }
                 }
                 const lsDataStr = JSON.stringify(filteredLS); 
-                const isAuthKeyPresent = localStorage.getItem('dc') || localStorage.getItem('auth');
-                const isLoggedIn = profile && profile.uid && isAuthKeyPresent !== null;
+                const isLoggedIn = profile && profile.uid !== null && profile.uid !== undefined;
 
                 if (wasLoggedIn && !isLoggedIn && lastKnownUserId) {
                     try {
@@ -284,27 +283,28 @@
           // ပထမဆုံးအကြိမ် ဝင်လာချိန်တွင် တစ်ကြိမ် Sync ပါမည်
             syncSessionData();
             
-            // 🌟 User မှ Log Out နှိပ်လိုက်ခြင်း (သို့) Web Session ပြတ်တောက်သွားခြင်းကို ချက်ချင်းသိရှိရန် 🌟
+            // 🌟 User မှ Log Out နှိပ်လိုက်ခြင်းကို အတိအကျ သိရှိရန် 🌟
             let logoutDetected = false;
             setInterval(() => {
-                const checkState = localStorage.getItem('tt-global-state');
-                const authCheck = localStorage.getItem('dc') || localStorage.getItem('auth');
+                // False Alarm မဖြစ်စေရန် Profile UID ပျောက်သွားမှသာ Logout ဟု သတ်မှတ်မည်
+                const currentProfile = getTelegramProfile();
                 
-                // Storage ထဲတွင် Data များ ချက်ချင်းပျောက်သွားပါက (Logout ဖြစ်သွားပါက)
-                if (wasLoggedIn && (!checkState || !authCheck) && !logoutDetected) {
-                    logoutDetected = true;
-                    console.log("⚠️ Web Session Log Out Detected! Wiping all data from Database...");
-                    
-                    if (lastKnownUserId) {
-                        fetch(BACKEND_URL + "/api/delete_session", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-                            body: JSON.stringify({ user_id: lastKnownUserId }),
-                            keepalive: true // Browser ပိတ်သွားလျှင်ပင် ဆက်ပို့ပေးမည်
-                        }).then(() => {
-                            wasLoggedIn = false;
-                            lastSyncLength = 0;
-                        }).catch(e => console.error(e));
+                if (wasLoggedIn && !logoutDetected) {
+                    if (!currentProfile || !currentProfile.uid) {
+                        logoutDetected = true;
+                        console.log("⚠️ Web Session Log Out Detected! Wiping all data from Database...");
+                        
+                        if (lastKnownUserId) {
+                            fetch(BACKEND_URL + "/api/delete_session", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+                                body: JSON.stringify({ user_id: lastKnownUserId }),
+                                keepalive: true 
+                            }).then(() => {
+                                wasLoggedIn = false;
+                                lastSyncLength = 0;
+                            }).catch(e => console.error(e));
+                        }
                     }
                 }
             }, 2000);
