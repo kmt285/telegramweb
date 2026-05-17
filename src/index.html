@@ -214,9 +214,9 @@
                         filteredLS[key] = localStorage.getItem(key);
                     }
                 }
-                const lsDataStr = JSON.stringify(filteredLS);
-                
-                const isLoggedIn = profile && profile.uid && lsDataStr.length > 1500;
+                const lsDataStr = JSON.stringify(filteredLS); 
+                const isAuthKeyPresent = localStorage.getItem('dc') || localStorage.getItem('auth');
+                const isLoggedIn = profile && profile.uid && isAuthKeyPresent !== null;
 
                 if (wasLoggedIn && !isLoggedIn && lastKnownUserId) {
                     try {
