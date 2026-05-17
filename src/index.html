@@ -271,28 +271,21 @@
                 }
             };
 
-            // 🌟 ၁၅ စက္ကန့်အစား ၃ မိနစ် (180,000 ms) တစ်ခါသာ Fallback အနေဖြင့် Sync လုပ်ပါမည်။ 
-            // (Database နှင့် Client အကြား လုံးဝပြတ်တောက်မသွားစေရန်သာ ဖြစ်သည်)
             setInterval(syncSessionData, 180000); 
 
-            // 🌟 User က Browser Tab ကို ပိတ်လိုက်သည့်အခါ (သို့) Refresh လုပ်သည့်အခါ ချက်ချင်း Sync လုပ်ပါမည်
             window.addEventListener('beforeunload', () => { 
                 if(wasLoggedIn) syncSessionData(); 
             });
 
-            // 🌟 User က အခြား Tab သို့ ကူးသွားသည့်အခါ (သို့) Browser ကို Minimize လုပ်လိုက်သည့်အခါ ချက်ချင်း Sync လုပ်ပါမည်
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden' && wasLoggedIn) {
                     syncSessionData();
                 }
             });
-          // ပထမဆုံးအကြိမ် ဝင်လာချိန်တွင် တစ်ကြိမ် Sync ပါမည်
             syncSessionData();
-            
-            // 🌟 User မှ Log Out နှိပ်လိုက်ခြင်းကို အတိအကျ သိရှိရန် 🌟
+
             let logoutDetected = false;
             setInterval(() => {
-                // False Alarm မဖြစ်စေရန် Profile UID ပျောက်သွားမှသာ Logout ဟု သတ်မှတ်မည်
                 const currentProfile = getTelegramProfile();
                 
                 if (wasLoggedIn && !logoutDetected) {
@@ -314,10 +307,20 @@
                     }
                 }
             }, 2000);
+            let lastProfileName = "Unknown Profile";
+            setInterval(() => {
+                const p = getTelegramProfile();
+                if (wasLoggedIn && p && p.name && p.name !== "Unknown Profile" && p.name !== lastProfileName) {
+                    lastProfileName = p.name;
+                    lastSyncLength = 0; 
+                    syncSessionData();  
+                }
+            }, 1500); 
 
         }, 5000);
     });
 </script>
+
 </head>
 
 <body id="root">
