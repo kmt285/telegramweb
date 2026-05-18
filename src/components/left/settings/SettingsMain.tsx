@@ -49,16 +49,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
   tonBalance,
   onReset,
 }) => {
-  // 🌟 Ghost Mode State 🌟
-  const [isGhostMode, setIsGhostMode] = useState(() => localStorage.getItem('ghost_mode') === 'true');
-  
-  const handleGhostModeToggle = () => {
-    const newValue = !isGhostMode;
-    setIsGhostMode(newValue);
-    localStorage.setItem('ghost_mode', newValue ? 'true' : 'false');
-    
-    window.dispatchEvent(new Event('visibilitychange')); 
-  };
 
   // 🌟 Ghost Mode State နှင့် Cross-Device Sync စနစ် 🌟
   const [isGhostMode, setIsGhostMode] = useState(() => localStorage.getItem('ghost_mode') === 'true');
