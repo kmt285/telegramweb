@@ -1324,10 +1324,14 @@ export async function sendMessageAction({
 }: {
   peer: ApiPeer; threadId?: ThreadId; action: ApiSendMessageAction;
 }) {
-  if (localStorage.getItem('ghost_mode') === 'true') return undefined; // 👻 Ghost Mode: စာရိုက်နေကြောင်း (Typing...) ပြသခြင်းကို တားဆီးမည်
-
   const mtpAction = buildSendMessageAction(action);
-  if (!mtpAction) return undefined;
+  if (!mtpAction) {
+    if (DEBUG) {
+      // eslint-disable-next-line no-console
+      console.warn('Unsupported message action', action);
+    }
+    return undefined;
+  }
 
   try {
     const result = await invokeRequest(new GramJs.messages.SetTyping({
@@ -1340,7 +1344,9 @@ export async function sendMessageAction({
       abortControllerThreadId: threadId,
     });
     return result;
-  } catch (error) {}
+  } catch (error) {
+    // Prevent error from being displayed in UI
+  }
   return undefined;
 }
 
@@ -1349,9 +1355,6 @@ export async function markMessageListRead({
 }: {
   chat: ApiChat; threadId: ThreadId; maxId?: number;
 }) {
-  const isGhost = localStorage.getItem('ghost_mode') === 'true';
-  if (isGhost) return; // 👻 Ghost Mode: Server သို့ Seen ပို့ခြင်းကို အပြီးတိုင် တားဆီးမည်
-
   const isChannel = getEntityTypeById(chat.id) === 'channel';
 
   if (isChannel && threadId === MAIN_THREAD_ID) {
@@ -1398,9 +1401,6 @@ export async function markMessagesRead({
 }: {
   chat: ApiChat; messageIds: number[];
 }) {
-  const isGhost = localStorage.getItem('ghost_mode') === 'true';
-  if (isGhost) return; // 👻 Ghost Mode: Voice Note / Media များကို Seen ပြခြင်းကို တားဆီးမည်
-
   const isChannel = getEntityTypeById(chat.id) === 'channel';
 
   const result = await invokeRequest(
@@ -1414,7 +1414,9 @@ export async function markMessagesRead({
       }),
   );
 
-  if (!result) return;
+  if (!result) {
+    return;
+  }
 
   if (result !== true) {
     processAffectedHistory(chat, result);
@@ -1434,6 +1436,7 @@ export async function markMessagesRead({
     },
   });
 }
+
 export async function fetchMessageViews({
   chat, ids, shouldIncrement,
 }: {
