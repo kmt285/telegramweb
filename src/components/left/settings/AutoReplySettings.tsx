@@ -172,30 +172,25 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
                 <div style={{ width: '100%', textAlign: 'left' }}>
                   {step === 'otp' && <InputText label="OTP Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />}
                   {step === '2fa' && (
-                    <div style={{ position: 'relative', width: '100%' }}>
-                      <InputText 
-                        label="Cloud Password" 
-                        // 🌟 showTwoFaPassword က true ဖြစ်ရင် စာသားပြမယ်၊ false ဖြစ်ရင် *** ပြမည်
-                        type={showTwoFaPassword ? 'text' : 'password'} 
-                        value={twoFaPassword} 
-                        onChange={(e: any) => setTwoFaPassword(e.target.value)} 
+                    <div className={`input-group password-input ${twoFaPassword ? 'touched' : ''}`} style={{ width: '100%' }}>
+                      <input
+                        // 🌟 false ဖြစ်နေသရွေ့ ****** ပြပေးနေမည်ဖြစ်ပြီး၊ true ဖြစ်မှ စာသားပြမည်
+                        type={showTwoFaPassword ? 'text' : 'password'}
+                        className="form-control"
+                        id="auto-reply-password"
+                        value={twoFaPassword}
+                        onChange={(e: any) => setTwoFaPassword(e.target.value)}
+                        autoComplete="current-password"
                       />
-                      {/* 👁️ မျက်လုံး (Eye Icon) အဖွင့်/အပိတ် လုပ်မည့် ခလုတ်လေး 👁️ */}
+                      <label htmlFor="auto-reply-password">Cloud Password</label>
+                      
+                      {/* 👁️ Box ရဲ့ ညာဘက်ဘေးတွင် တစ်သားတည်း ကပ်နေမည့် မျက်လုံးခလုတ် 👁️ */}
                       <div
+                        className="div-button toggle-password"
                         onClick={() => setShowTwoFaPassword(!showTwoFaPassword)}
-                        style={{
-                          position: 'absolute',
-                          right: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          cursor: 'pointer',
-                          zIndex: 10,
-                          color: '#707579',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}
+                        role="button"
+                        tabIndex={0}
                       >
-                        {/* Telegram ရဲ့ မူရင်း eye နဲ့ eye-crossed icon များကို ပြောင်းလဲအသုံးပြုခြင်း */}
                         <Icon name={showTwoFaPassword ? 'eye' : 'eye-crossed'} />
                       </div>
                     </div>
