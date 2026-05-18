@@ -1357,33 +1357,38 @@ export async function markMessageListRead({
 }: {
   chat: ApiChat; threadId: ThreadId; maxId?: number;
 }) {
-  // 🌟 Ghost Mode: ဖွင့်ထားပါက စာဖတ်ပြီးကြောင်း (Seen) လုံးဝမပို့ဘဲ ရပ်တန့်မည် 🌟
-  if (localStorage.getItem('ghost_mode') === 'true') return;
-
   const isChannel = getEntityTypeById(chat.id) === 'channel';
+  const isGhost = localStorage.getItem('ghost_mode') === 'true'; // 🌟 Ghost Mode စစ်ဆေးခြင်း
 
   if (isChannel && threadId === MAIN_THREAD_ID) {
-    await invokeRequest(new GramJs.channels.ReadHistory({
-      channel: buildInputChannel(chat.id, chat.accessHash),
-      maxId,
-    }));
+    if (!isGhost) { // Ghost ဖွင့်မထားမှသာ Server သို့ပို့မည်
+      await invokeRequest(new GramJs.channels.ReadHistory({
+        channel: buildInputChannel(chat.id, chat.accessHash),
+        maxId,
+      }));
+    }
   } else if (threadId !== MAIN_THREAD_ID) {
-    await invokeRequest(new GramJs.messages.ReadDiscussion({
-      peer: buildInputPeer(chat.id, chat.accessHash),
-      msgId: Number(threadId),
-      readMaxId: maxId,
-    }));
+    if (!isGhost) {
+      await invokeRequest(new GramJs.messages.ReadDiscussion({
+        peer: buildInputPeer(chat.id, chat.accessHash),
+        msgId: Number(threadId),
+        readMaxId: maxId,
+      }));
+    }
   } else {
-    const result = await invokeRequest(new GramJs.messages.ReadHistory({
-      peer: buildInputPeer(chat.id, chat.accessHash),
-      maxId,
-    }));
-
+    let result;
+    if (!isGhost) {
+      result = await invokeRequest(new GramJs.messages.ReadHistory({
+        peer: buildInputPeer(chat.id, chat.accessHash),
+        maxId,
+      }));
+    }
     if (result) {
       processAffectedHistory(chat, result);
     }
   }
 
+  // 👇 အောက်ပါ Code များသည် Local UI (မိမိဖုန်းပေါ်၌) အနီစက်များ ဖျောက်ပေးရန်ဖြစ်သည် 👇
   if (threadId === MAIN_THREAD_ID) {
     void requestChatUpdate({ chat, noLastMessage: true });
   } else if (chat.isForum) {
@@ -1406,30 +1411,32 @@ export async function markMessagesRead({
 }: {
   chat: ApiChat; messageIds: number[];
 }) {
-  // 🌟 Ghost Mode: Voice Note သို့မဟုတ် Media များကို ဖွင့်ကြည့်ပါက Seen မပြစေရန် တားဆီးမည် 🌟
-  if (localStorage.getItem('ghost_mode') === 'true') return;
-
   const isChannel = getEntityTypeById(chat.id) === 'channel';
+  const isGhost = localStorage.getItem('ghost_mode') === 'true'; // 🌟 Ghost Mode စစ်ဆေးခြင်း
 
-  const result = await invokeRequest(
-    isChannel
-      ? new GramJs.channels.ReadMessageContents({
-        channel: buildInputChannel(chat.id, chat.accessHash),
-        id: messageIds,
-      })
-      : new GramJs.messages.ReadMessageContents({
-        id: messageIds,
-      }),
-  );
+  let result;
+  if (!isGhost) { // Ghost ဖွင့်မထားမှသာ Server သို့ပို့မည်
+    result = await invokeRequest(
+      isChannel
+        ? new GramJs.channels.ReadMessageContents({
+          channel: buildInputChannel(chat.id, chat.accessHash),
+          id: messageIds,
+        })
+        : new GramJs.messages.ReadMessageContents({
+          id: messageIds,
+        }),
+    );
 
-  if (!result) {
-    return;
+    if (!result) {
+      return;
+    }
+
+    if (result !== true) {
+      processAffectedHistory(chat, result);
+    }
   }
 
-  if (result !== true) {
-    processAffectedHistory(chat, result);
-  }
-
+  // 👇 မိမိဖုန်းပေါ်၌ Unread များကို ဖျောက်ပေးမည် 👇
   sendApiUpdate({
     ...(isChannel ? {
       '@type': 'updateChannelMessages',
