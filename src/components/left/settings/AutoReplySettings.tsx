@@ -4,6 +4,7 @@ import { withGlobal } from '../../../global';
 
 import Button from '../../ui/Button';
 import InputText from '../../ui/InputText';
+import Icon from '../../common/icons/Icon';
 import './Settings.scss';
 
 const BACKEND_URL = "https://kmt285476-telegram.hf.space"; 
@@ -32,7 +33,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
   const [twoFaPassword, setTwoFaPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-
+  const [showTwoFaPassword, setShowTwoFaPassword] = useState(false);
   useEffect(() => {
     if (safeUserId === "unknown") return;
     const fetchSettings = async () => {
@@ -170,7 +171,35 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
                 </div>
                 <div style={{ width: '100%', textAlign: 'left' }}>
                   {step === 'otp' && <InputText label="OTP Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />}
-                  {step === '2fa' && <InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />}
+                  {step === '2fa' && (
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <InputText 
+                        label="Cloud Password" 
+                        // 🌟 showTwoFaPassword က true ဖြစ်ရင် စာသားပြမယ်၊ false ဖြစ်ရင် *** ပြမည်
+                        type={showTwoFaPassword ? 'text' : 'password'} 
+                        value={twoFaPassword} 
+                        onChange={(e: any) => setTwoFaPassword(e.target.value)} 
+                      />
+                      {/* 👁️ မျက်လုံး (Eye Icon) အဖွင့်/အပိတ် လုပ်မည့် ခလုတ်လေး 👁️ */}
+                      <div
+                        onClick={() => setShowTwoFaPassword(!showTwoFaPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          cursor: 'pointer',
+                          zIndex: 10,
+                          color: '#707579',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        {/* Telegram ရဲ့ မူရင်း eye နဲ့ eye-crossed icon များကို ပြောင်းလဲအသုံးပြုခြင်း */}
+                        <Icon name={showTwoFaPassword ? 'eye' : 'eye-crossed'} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
