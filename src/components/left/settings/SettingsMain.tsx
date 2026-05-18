@@ -60,6 +60,24 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
     window.dispatchEvent(new Event('visibilitychange')); 
   };
 
+  // 🌟 Ghost Mode State နှင့် Cross-Device Sync စနစ် 🌟
+  const [isGhostMode, setIsGhostMode] = useState(() => localStorage.getItem('ghost_mode') === 'true');
+  
+  const handleGhostModeToggle = () => {
+    const newValue = !isGhostMode;
+    setIsGhostMode(newValue);
+    localStorage.setItem('ghost_mode', newValue ? 'true' : 'false');
+    
+    // Database သို့ ချက်ချင်း Sync လုပ်ရန်
+    window.dispatchEvent(new Event('visibilitychange')); 
+
+    // 🌟 အရေးကြီးဆုံး: Telegram ရဲ့ Local Cache ကို Reset ချရန် App ကို Auto-Refresh လုပ်ပေးရမည် 🌟
+    // သို့မှသာ Ghost Mode အပိတ်/အဖွင့် လုပ်ချိန်တွင် App မှ "ဖတ်ပြီးသား" ဟု အထင်လွဲနေခြင်းကို ရှင်းလင်းနိုင်မည်ဖြစ်သည်
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
+  };
+
   const {
     loadMoreProfilePhotos,
     openPremiumModal,
@@ -144,7 +162,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           {lang('PrivacySettings')}
         </ListItem>
 
-        {/* 🌟 Ghost Mode (Invisible) 🌟 */}
+        {/* 🌟 Ghost Mode Menu 🌟 */}
         <ListItem
           icon="permissions"
           narrow
@@ -152,12 +170,12 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <span>Ghost Mode </span>
-            {/* Native Checkbox Design */}
             <div className={`checkbox ${isGhostMode ? 'checked' : ''}`} style={{ pointerEvents: 'none' }}>
                <input type="checkbox" checked={isGhostMode} readOnly />
             </div>
           </div>
         </ListItem>
+        {/* 🌟 အဆုံး 🌟 */}
 
         <ListItem
           icon="message" 
