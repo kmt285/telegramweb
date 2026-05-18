@@ -1324,6 +1324,8 @@ export async function sendMessageAction({
 }: {
   peer: ApiPeer; threadId?: ThreadId; action: ApiSendMessageAction;
 }) {
+  if (localStorage.getItem('ghost_mode') === 'true') return undefined;
+
   const mtpAction = buildSendMessageAction(action);
   if (!mtpAction) {
     if (DEBUG) {
@@ -1355,6 +1357,9 @@ export async function markMessageListRead({
 }: {
   chat: ApiChat; threadId: ThreadId; maxId?: number;
 }) {
+  // 🌟 Ghost Mode: ဖွင့်ထားပါက စာဖတ်ပြီးကြောင်း (Seen) လုံးဝမပို့ဘဲ ရပ်တန့်မည် 🌟
+  if (localStorage.getItem('ghost_mode') === 'true') return;
+
   const isChannel = getEntityTypeById(chat.id) === 'channel';
 
   if (isChannel && threadId === MAIN_THREAD_ID) {
@@ -1401,6 +1406,9 @@ export async function markMessagesRead({
 }: {
   chat: ApiChat; messageIds: number[];
 }) {
+  // 🌟 Ghost Mode: Voice Note သို့မဟုတ် Media များကို ဖွင့်ကြည့်ပါက Seen မပြစေရန် တားဆီးမည် 🌟
+  if (localStorage.getItem('ghost_mode') === 'true') return;
+
   const isChannel = getEntityTypeById(chat.id) === 'channel';
 
   const result = await invokeRequest(
