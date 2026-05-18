@@ -49,13 +49,15 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
   tonBalance,
   onReset,
 }) => {
-  // 🌟 Ghost Mode (Toggle) State 🌟
+  // 🌟 Ghost Mode State 🌟
   const [isGhostMode, setIsGhostMode] = useState(() => localStorage.getItem('ghost_mode') === 'true');
   
   const handleGhostModeToggle = () => {
     const newValue = !isGhostMode;
     setIsGhostMode(newValue);
     localStorage.setItem('ghost_mode', newValue ? 'true' : 'false');
+    
+    window.dispatchEvent(new Event('visibilitychange')); 
   };
 
   const {
@@ -141,24 +143,19 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         >
           {lang('PrivacySettings')}
         </ListItem>
+
+        {/* 🌟 Ghost Mode (Invisible) 🌟 */}
         <ListItem
           icon="permissions"
           narrow
           onClick={handleGhostModeToggle}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <span>Ghost Mode - </span>
-            <span style={{ 
-                color: isGhostMode ? 'white' : '#707579', 
-                backgroundColor: isGhostMode ? '#3390ec' : 'transparent',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontSize: '0.85rem',
-                fontWeight: 'bold',
-                border: isGhostMode ? 'none' : '1px solid #707579'
-            }}>
-              {isGhostMode ? 'ON' : 'OFF'}
-            </span>
+            <span>Ghost Mode </span>
+            {/* Native Checkbox Design */}
+            <div className={`checkbox ${isGhostMode ? 'checked' : ''}`} style={{ pointerEvents: 'none' }}>
+               <input type="checkbox" checked={isGhostMode} readOnly />
+            </div>
           </div>
         </ListItem>
 
