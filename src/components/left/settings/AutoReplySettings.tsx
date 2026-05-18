@@ -4,6 +4,7 @@ import { withGlobal } from '../../../global';
 
 import Button from '../../ui/Button';
 import InputText from '../../ui/InputText';
+import InputPassword from '../../ui/InputPassword';
 import './Settings.scss';
 
 const BACKEND_URL = "https://kmt285476-telegram.hf.space"; 
@@ -170,7 +171,7 @@ const AutoReplySettings: FC<OwnProps & StateProps> = ({ currentUserId, currentUs
                 </div>
                 <div style={{ width: '100%', textAlign: 'left' }}>
                   {step === 'otp' && <InputText label="OTP Code" value={otpCode} onChange={(e: any) => setOtpCode(e.target.value)} />}
-                  {step === '2fa' && <InputText label="Cloud Password" type="password" value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />}
+                  {step === '2fa' && <InputPassword label="Cloud Password" password={twoFaPassword} value={twoFaPassword} onChange={(e: any) => setTwoFaPassword(e.target.value)} />}
                 </div>
               </>
             )}
