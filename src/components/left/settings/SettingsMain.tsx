@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import { memo, useEffect } from '../../../lib/teact/teact';
+import { memo, useEffect, useState } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiStarsAmount, ApiTonAmount } from '../../../api/types';
@@ -49,6 +49,15 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
   tonBalance,
   onReset,
 }) => {
+  // 🌟 Ghost Mode (Toggle) State 🌟
+  const [isGhostMode, setIsGhostMode] = useState(() => localStorage.getItem('ghost_mode') === 'true');
+  
+  const handleGhostModeToggle = () => {
+    const newValue = !isGhostMode;
+    setIsGhostMode(newValue);
+    localStorage.setItem('ghost_mode', newValue ? 'true' : 'false');
+  };
+
   const {
     loadMoreProfilePhotos,
     openPremiumModal,
@@ -132,8 +141,27 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         >
           {lang('PrivacySettings')}
         </ListItem>
+        <ListItem
+          icon="permissions"
+          narrow
+          onClick={handleGhostModeToggle}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span>Ghost Mode (Invisible)</span>
+            <span style={{ 
+                color: isGhostMode ? 'white' : '#707579', 
+                backgroundColor: isGhostMode ? '#3390ec' : 'transparent',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '0.85rem',
+                fontWeight: 'bold',
+                border: isGhostMode ? 'none' : '1px solid #707579'
+            }}>
+              {isGhostMode ? 'ON' : 'OFF'}
+            </span>
+          </div>
+        </ListItem>
 
-        {/* 👇 🤖 Auto-Reply Menu အသစ် ထည့်သွင်းထားသော နေရာ 👇 */}
         <ListItem
           icon="message" 
           narrow
@@ -141,7 +169,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         >
           Away Messages
         </ListItem>
-        {/* 👆 အဆုံး 👆 */}
 
         <ListItem
           icon="folder"
