@@ -147,7 +147,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           onClick={handleGhostModeToggle}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <span>Ghost Mode</span>
+            <span>Ghost Mode - </span>
             <span style={{ 
                 color: isGhostMode ? 'white' : '#707579', 
                 backgroundColor: isGhostMode ? '#3390ec' : 'transparent',
