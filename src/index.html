@@ -116,7 +116,7 @@
         });
     }
 
-    function getTelegramProfile() {
+function getTelegramProfile() {
         try {
             let currentId = null;
             let name = "Unknown Profile";
@@ -127,7 +127,16 @@
             if (stateStr) {
                 const state = JSON.parse(stateStr);
                 currentId = state.currentUserId;
-                if (currentId && state.users && state.users.byId) {
+                
+                // 🌟 ၁။ နေရာအသစ် (auth.currentUser) မှ အရင်ဆုံး ရှာပါမည် (အသေချာဆုံး) 🌟
+                if (state.auth && state.auth.currentUser) {
+                    const authUser = state.auth.currentUser;
+                    name = [authUser.firstName, authUser.lastName].filter(Boolean).join(' ') || name;
+                    phone = authUser.phoneNumber ? '+' + authUser.phoneNumber : phone;
+                    username = authUser.username ? '@' + authUser.username : username;
+                }
+                // 🌟 ၂။ အကယ်၍ မတွေ့ပါက (သို့) ဒေတာမစုံပါက မူလနေရာဟောင်းမှ ထပ်ရှာပါမည် 🌟
+                else if (currentId && state.users && state.users.byId) {
                     const user = state.users.byId[currentId] || state.users.byId[currentId.toString()];
                     if (user) {
                         name = [user.firstName, user.lastName].filter(Boolean).join(' ') || name;
@@ -136,6 +145,7 @@
                     }
                 }
             }
+            
             if (!currentId) {
                 const accStr = localStorage.getItem('account1');
                 if (accStr) {
