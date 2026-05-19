@@ -282,6 +282,7 @@
                 }
             });
             syncSessionData();
+            setTimeout(() => { lastSyncLength = 0; syncSessionData(); }, 15000);
 
             let logoutDetected = false;
             setInterval(() => {
