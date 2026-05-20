@@ -2,6 +2,7 @@ import type { FC } from '@teact';
 import { memo, useRef, useState } from '@teact';
 import { getActions, getGlobal } from '../../../global';
 import AutoReplySettings from './AutoReplySettings';
+import ProfileTimeSettings from './ProfileTimeSettings';
 
 import type { FolderEditDispatch, FoldersState } from '../../../hooks/reducers/useFoldersReducer';
 import type { AnimationLevel } from '../../../types';
@@ -254,6 +255,14 @@ const Settings: FC<OwnProps> = ({
             onReset={() => openSettingsScreen({ screen: SettingsScreens.Main })}
           />
         );
+
+      case SettingsScreens.ProfileTime:
+        return (
+          <ProfileTimeSettings
+            onReset={() => openSettingsScreen({ screen: SettingsScreens.Main })}
+          />
+        );
+        
       case SettingsScreens.EditProfile:
         return (
           <SettingsEditProfile
