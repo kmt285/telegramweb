@@ -18,14 +18,33 @@ const ProfileTimeSettings: FC<OwnProps & StateProps> = ({ currentUserId, firstNa
   
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true); // 🌟 Data လှမ်းယူနေစဉ် စောင့်ရန်
   const [errorMsg, setErrorMsg] = useState('');
 
-  // ဝင်လာတာနဲ့ လက်ရှိဖွင့်ထားလား စစ်ဆေးရန် (Optional: Backend ကနေ ပြန်ယူလို့ရပါတယ်)
+  // 🌟 (၁) ဝင်ဝင်ချင်း Database ကနေ လက်ရှိအခြေအနေကို လှမ်းယူမည် 🌟
+  useEffect(() => {
+    if (safeUserId === "unknown") return;
+    const fetchState = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/get_profile_time`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+          body: JSON.stringify({ user_id: safeUserId })
+        });
+        const data = await res.json();
+        if (res.ok) setIsEnabled(data.enabled);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsFetching(false);
+      }
+    };
+    fetchState();
+  }, [safeUserId]);
   
   const handleSave = async (newState: boolean) => {
     setIsLoading(true);
     try {
-      // နာမည်ဟောင်းမှာ အချိန်တွေ ကပ်နေခဲ့ရင် ဖြတ်ထုတ်ပါမည်
       const cleanLastName = lastName?.replace(/~\s\d{1,2}:\d{2}\s[AM|PM]+/g, '').trim();
 
       const res = await fetch(`${BACKEND_URL}/api/update_profile_time`, {
@@ -39,11 +58,13 @@ const ProfileTimeSettings: FC<OwnProps & StateProps> = ({ currentUserId, firstNa
         })
       });
 
+      const data = await res.json();
       if (res.ok) {
         setIsEnabled(newState);
         setErrorMsg('');
       } else {
-        setErrorMsg('Failed to update. Make sure Server is connected.');
+        // Server ချိတ်ထားခြင်းမရှိရင် Error ပြမည်
+        setErrorMsg(data.error || 'Failed to update. Make sure Server is connected.');
       }
     } catch (err) {
       setErrorMsg('Network Error.');
@@ -51,16 +72,16 @@ const ProfileTimeSettings: FC<OwnProps & StateProps> = ({ currentUserId, firstNa
     setIsLoading(false);
   };
 
+  if (isFetching) return null; // Data မရသေးခင် အလွတ်ပြထားမည်
+
   return (
     <div className="settings-content custom-scroll">
       <div className="ar-wrapper">
-        
-        {/* Toggle Card */}
         <div className="ar-card" onClick={() => !isLoading && handleSave(!isEnabled)}>
           <div className="ar-text-col">
             <div className="ar-title">Profile Time</div>
             <div className="ar-desc">
-              Show current time next to your name (e.g. {firstName} ~ 3:21 PM).
+              Show current time next to your name.
             </div>
           </div>
           <div className={`ar-switch ${isEnabled ? 'on' : ''}`}>
