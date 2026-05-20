@@ -280,6 +280,7 @@ export enum SettingsScreens {
   FoldersShare,
   Passkeys,
   AutoReply,
+  ProfileTime,
 }
 
 export type StickerSetOrReactionsSetOrRecent = Pick<ApiStickerSet, (
