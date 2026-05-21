@@ -141,16 +141,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           Away Messages
         </ListItem>
 
-        {/* 👇 Profile Time Menu 👇 */}
-        <ListItem
-          icon="recent" // နာရီပုံစံ Icon (Teact တွင်ရှိသော icon)
-          narrow
-          onClick={() => openSettingsScreen({ screen: SettingsScreens.ProfileTime })}
-        >
-          Profile Time
-        </ListItem>
-        {/* 👆 အဆုံး 👆 */}
-
         <ListItem
           icon="folder"
           narrow
